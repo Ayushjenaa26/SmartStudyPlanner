@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - StudyFlow</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .assistant-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+        .ast-card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; cursor: pointer; text-decoration: none; color: inherit; transition: border 0.2s;}
+        .ast-card:hover { border-color: var(--primary); }
+        .ast-card h4 { margin: 0 0 8px 0; color: var(--text-dark); }
+        .ast-card p { margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.4;}
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">StudyFlow</div>
+        <div class="subtitle">AI Smart Planner</div>
+        <div class="nav-links">
+            <a href="/" class="active">Dashboard</a>
+            <a href="/planner">Planner</a>
+            <a href="/tasks">All Tasks</a>
+            <a href="/setup">Setup Goals</a>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="topbar">
+            <div>
+                <div class="greeting">Welcome back</div>
+                <div class="name">Ayush</div>
+            </div>
+            <div class="actions">
+                <button class="btn-outline">Profile</button>
+                <button class="btn-icon">☾</button>
+                <button class="btn-dark">Logout</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="reminder-banner">
+                <div class="label">Reminders</div>
+                <div class="title">Review current progress & stay on track!</div>
+            </div>
+
+            <div class="panel">
+                <div class="streak-header">
+                    <span>Submissions <span class="streak-val green">3</span></span>
+                    <span>Max Streak <span class="streak-val green">3 days</span></span>
+                    <span>Current Streak <span class="streak-val green">2 days</span></span>
+                </div>
+                <div class="streak-grid" id="streakGrid">
+                    <!-- Javascript generated -->
+                </div>
+            </div>
+
+            <div class="dashboard-row">
+                <!-- Daily Goals Left -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h2 class="panel-title">Daily Goals</h2>
+                            <div class="panel-subtitle" id="todayDateLabel">Today</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <h2 class="panel-title" id="progressText">0/0</h2>
+                            <div class="panel-subtitle">completed</div>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="progressBar"></div>
+                    </div>
+
+                    <div id="emptyState" style="text-align: center; padding: 20px; color:#64748b; font-size:14px; display:none;">
+                        No goals planned for today!<br>
+                        <a href="/setup" style="color:var(--primary); text-decoration:none; font-weight:600; margin-top:8px; display:inline-block;">Set Goals</a>
+                    </div>
+
+                    <div class="task-list" id="dailyTasksList">
+                        <!-- Populated by JS -->
+                    </div>
+                    
+                    <a href="/tasks" style="display:block; text-align:center; color:var(--primary); text-decoration:none; font-size:14px; font-weight:600; margin-top:20px;">View All Tasks</a>
+                </div>
+
+                <!-- Goal Assistant Right -->
+                <div class="panel">
+                    <h2 class="panel-title" style="font-size: 14px; text-transform: uppercase; color: var(--text-muted);">Goal Assistant</h2>
+                    <div class="panel-title" style="font-size: 20px; margin-top:8px;">Choose your planning mode</div>
+                    <p class="panel-subtitle" style="margin-bottom: 24px;">Pick a focus, we will open a dedicated workspace to capture details.</p>
+
+                    <div class="assistant-cards">
+                        <a href="/setup" class="ast-card">
+                            <h4>🎯 Long-term mission</h4>
+                            <p>Calibrate study hours, subjects, and pacing.</p>
+                        </a>
+                        <a href="/setup" class="ast-card">
+                            <h4>⚡ Exam sprint</h4>
+                            <p>Upload datesheet + syllabus, map remaining coverage.</p>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Render basic streak mock
+            let streakHtml = '';
+            for(let c=0; c<45; c++){ // approx columns
+                streakHtml += '<div class="streak-col">';
+                for(let r=0; r<7; r++){
+                    let activeClass = (c === 43 && r >= 5) || (c === 44 && r === 0) ? 'active' : '';
+                    streakHtml += `<div class="streak-box ${activeClass}"></div>`;
+                }
+                streakHtml += '</div>';
+            }
+            document.getElementById('streakGrid').innerHTML = streakHtml;
+
+            // Load today's tasks
+            const planStr = localStorage.getItem('studyPlan');
+            let taskStatus = JSON.parse(localStorage.getItem('taskStatus')) || {};
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+            const displayOptions = { weekday: 'long', month: 'short', day: 'numeric' };
+            document.getElementById('todayDateLabel').innerText = new Date().toLocaleDateString(undefined, displayOptions);
+
+            let todaysTasks = [];
+            if (planStr) {
+                try {
+                    const planData = JSON.parse(planStr);
+                    if (planData[todayStr]) {
+                        todaysTasks = planData[todayStr];
+                    }
+                } catch(e){}
+            }
+
+            const listEl = document.getElementById('dailyTasksList');
+            const emptyEl = document.getElementById('emptyState');
+            const progressFill = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+
+            if (todaysTasks.length === 0) {
+                emptyEl.style.display = 'block';
+                progressFill.style.width = '0%';
+                progressText.innerText = '0/0';
+                return;
+            }
+
+            function renderDailyTasks() {
+                listEl.innerHTML = '';
+                let completedCount = 0;
+
+                todaysTasks.forEach((t, i) => {
+                    const id = `${todayStr}_${t.subject}_${i}`;
+                    const isCompleted = !!taskStatus[id];
+                    if (isCompleted) completedCount++;
+
+                    const card = document.createElement('div');
+                    card.className = `task-card ${isCompleted ? 'completed' : ''}`;
+                    card.innerHTML = `
+                        <div class="task-main">
+                            <div class="task-checkbox-custom" onclick="toggleDashboardTask('${id}')"></div>
+                            <div>
+                                <h3 class="task-title">${t.task}</h3>
+                                <div class="task-meta">${t.subject}</div>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="task-tag tag-easy">${isCompleted ? 'Done' : 'Pending'}</span>
+                        </div>
+                    `;
+                    listEl.appendChild(card);
+                });
+
+                progressText.innerText = `${completedCount}/${todaysTasks.length}`;
+                progressFill.style.width = `${(completedCount / todaysTasks.length) * 100}%`;
+            }
+
+            window.toggleDashboardTask = function(id) {
+                taskStatus[id] = !taskStatus[id];
+                localStorage.setItem('taskStatus', JSON.stringify(taskStatus));
+                renderDailyTasks();
+            };
+
+            renderDailyTasks();
+        });
+    </script>
+</body>
+</html>

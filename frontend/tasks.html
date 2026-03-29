@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Tasks - StudyFlow</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">StudyFlow</div>
+        <div class="subtitle">AI Smart Planner</div>
+        <div class="nav-links">
+            <a href="/">Dashboard</a>
+            <a href="/planner">Planner</a>
+            <a href="/tasks" class="active">All Tasks</a>
+            <a href="/setup">Setup Goals</a>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="topbar">
+            <div>
+                <div class="greeting">Welcome back</div>
+                <div class="name">Ayush</div>
+            </div>
+            <div class="actions">
+                <button class="btn-outline">Profile</button>
+                <button class="btn-icon">☾</button>
+                <button class="btn-dark">Logout</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="page-header-row">
+                <a href="/" class="back-btn">← Back to Dashboard</a>
+                <div style="text-align: right;">
+                    <h1 style="margin:0; font-size: 24px;">All Tasks</h1>
+                    <div id="statsCount" style="color:#64748b; font-size: 13px; margin-top:4px;">0 tasks shown</div>
+                </div>
+            </div>
+
+            <div class="metrics-row">
+                <div class="metric-card">
+                    <div class="title">Total</div>
+                    <div class="value val-blue" id="stat-total">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Completed</div>
+                    <div class="value val-green" id="stat-completed">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Pending</div>
+                    <div class="value val-orange" id="stat-pending">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="title">Overdue</div>
+                    <div class="value val-red" id="stat-overdue">0</div>
+                </div>
+            </div>
+
+            <div class="filters-row">
+                <div class="filter-group">
+                    <span class="filter-label">Filter by Status</span>
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="pending">Pending</button>
+                    <button class="filter-btn" data-filter="completed">Completed</button>
+                </div>
+            </div>
+
+            <div class="task-list" id="allTasksList">
+                <!-- Populate via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const planStr = localStorage.getItem('studyPlan');
+            let taskStatus = JSON.parse(localStorage.getItem('taskStatus')) || {};
+            let allTasks = [];
+            
+            if (planStr) {
+                try {
+                    const planData = JSON.parse(planStr);
+                    const todayStr = new Date().toISOString().split('T')[0];
+
+                    Object.keys(planData).forEach(date => {
+                        planData[date].forEach((t, index) => {
+                            const id = `${date}_${t.subject}_${index}`;
+                            const isCompleted = !!taskStatus[id];
+                            const isOverdue = date < todayStr && !isCompleted;
+                            
+                            allTasks.push({
+                                id, date, subject: t.subject, task: t.task, isCompleted, isOverdue
+                            });
+                        });
+                    });
+                } catch(e) {}
+            }
+
+            let currentFilter = 'all';
+
+            function render() {
+                const listEl = document.getElementById('allTasksList');
+                listEl.innerHTML = '';
+                
+                let filtered = allTasks;
+                if (currentFilter === 'pending') filtered = allTasks.filter(t => !t.isCompleted);
+                if (currentFilter === 'completed') filtered = allTasks.filter(t => t.isCompleted);
+
+                // Update Stats
+                const total = allTasks.length;
+                const completed = allTasks.filter(t => t.isCompleted).length;
+                const overdue = allTasks.filter(t => t.isOverdue).length;
+                const pending = total - completed;
+
+                document.getElementById('stat-total').innerText = total;
+                document.getElementById('stat-completed').innerText = completed;
+                document.getElementById('stat-pending').innerText = pending;
+                document.getElementById('stat-overdue').innerText = overdue;
+                document.getElementById('statsCount').innerText = `${filtered.length} of ${total} tasks shown`;
+
+                filtered.forEach(t => {
+                    const card = document.createElement('div');
+                    card.className = `task-card ${t.isCompleted ? 'completed' : ''} ${t.isOverdue ? 'overdue' : ''}`;
+                    
+                    const formatDisplayDate = new Date(t.date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'});
+
+                    card.innerHTML = `
+                        <div class="task-main">
+                            <div class="task-checkbox-custom" onclick="toggleTask('${t.id}')"></div>
+                            <div>
+                                <h3 class="task-title">${t.task}</h3>
+                                <div class="task-meta">
+                                    <span>${t.subject}</span>
+                                    <span>•</span>
+                                    <span>Scheduled: ${formatDisplayDate}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="task-tag tag-med">Medium</span>
+                        </div>
+                    `;
+                    listEl.appendChild(card);
+                });
+            }
+
+            window.toggleTask = function(id) {
+                const task = allTasks.find(t => t.id === id);
+                if(task) {
+                    task.isCompleted = !task.isCompleted;
+                    if(task.isCompleted) {
+                        task.isOverdue = false; // completed tasks aren't overdue anymore
+                    } else {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        task.isOverdue = task.date < todayStr;
+                    }
+                    taskStatus[id] = task.isCompleted;
+                    localStorage.setItem('taskStatus', JSON.stringify(taskStatus));
+                    render();
+                }
+            };
+
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentFilter = e.target.dataset.filter;
+                    render();
+                });
+            });
+
+            render();
+        });
+    </script>
+</body>
+</html>

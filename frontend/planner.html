@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planner - StudyFlow</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+    <style>
+        .layout { display: flex; gap: 30px; margin: 0 auto; height: 100%; }
+        
+        .planner-sidebar { width: 350px; background: transparent; padding-right: 20px;}
+        .planner-sidebar h2 { margin-top: 0; font-size: 20px; color: var(--text-dark); margin-bottom: 8px;}
+        .planner-sidebar p.subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 24px;}
+        
+        .upcoming-list { display: flex; flex-direction: column; gap: 20px; max-height: calc(100vh - 200px); overflow-y: auto; padding-right: 10px;}
+        .date-group h3 { font-size: 12px; color: var(--text-muted); margin: 0 0 10px 0; font-weight: 600; text-transform: uppercase; }
+        .task-card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .task-subject { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text-dark); margin-bottom: 8px; font-size: 14px; }
+        .task-title { color: var(--text-muted); font-size: 13px; line-height: 1.4; }
+
+        .main-content { flex: 1; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        
+        /* FullCalendar Custom Overrides to match theme */
+        .fc { font-family: inherit; }
+        .fc-toolbar-title { font-size: 1.25em !important; color: var(--text-dark); font-weight: 600 !important;}
+        .fc-button-primary { background-color: white !important; color: var(--text-dark) !important; border-color: var(--border) !important; text-transform: capitalize !important;}
+        .fc-button-primary:hover { background-color: var(--bg-light) !important; }
+        .fc-button-active { background-color: var(--primary) !important; color: white !important; border-color: var(--primary) !important; }
+        .fc-event { background-color: var(--primary-light); border: 1px solid var(--primary); color: var(--primary); border-radius: 4px; padding: 2px 4px; font-size: 11px; margin-bottom: 2px; cursor: pointer;}
+        .fc-daygrid-day-number { color: var(--text-dark); font-size: 14px; text-decoration: none;}
+        .fc-col-header-cell { padding: 8px 0; background: var(--bg-light); border-color: var(--border) !important;}
+        .fc-theme-standard td, .fc-theme-standard th { border-color: var(--border); }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">StudyFlow</div>
+        <div class="subtitle">AI Smart Planner</div>
+        <div class="nav-links">
+            <a href="/">Dashboard</a>
+            <a href="/planner" class="active">Planner</a>
+            <a href="/tasks">All Tasks</a>
+            <a href="/setup">Setup Goals</a>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="topbar">
+            <div>
+                <div class="greeting">Calendar</div>
+                <div class="name">Schedule & Upcoming</div>
+            </div>
+            <div class="actions">
+                <button class="btn-dark" onclick="window.location.href='/setup'">Set New Goal</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="layout">
+                <!-- Sidebar for Upcoming Tasks -->
+                <div class="planner-sidebar">
+                    <h2>Upcoming Tasks</h2>
+                    <p class="subtitle">Stay on track with your scheduled study plan</p>
+                    <div id="upcomingList" class="upcoming-list">
+                        <!-- Javascript will populate this -->
+                    </div>
+                </div>
+
+                <!-- Main Calendar Area -->
+                <div class="main-content">
+                    <div id='calendar'></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const planStr = localStorage.getItem('studyPlan');
+            const taskStatus = JSON.parse(localStorage.getItem('taskStatus')) || {};
+            let planData = {};
+            try {
+                if (planStr) planData = JSON.parse(planStr);
+            } catch (e) {
+                console.error("Error parsing plan", e);
+            }
+
+            const events = [];
+            const upcomingData = [];
+            const sortedDates = Object.keys(planData).sort();
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            sortedDates.forEach(date => {
+                const tasks = planData[date];
+                
+                tasks.forEach((t, i) => {
+                    const taskId = `${date}_${t.subject}_${i}`;
+                    const isCompleted = !!taskStatus[taskId];
+                    
+                    const color = isCompleted ? '#10b981' : '#6366f1';
+                    const bgColor = isCompleted ? '#ecfdf5' : '#e0e7ff';
+                    
+                    events.push({
+                        title: `${t.subject}: ${t.task}`,
+                        start: date,
+                        allDay: true,
+                        backgroundColor: bgColor,
+                        borderColor: color,
+                        textColor: color,
+                        extendedProps: {
+                            subject: t.subject,
+                            task: t.task,
+                            completed: isCompleted
+                        }
+                    });
+                });
+
+                if (date >= todayStr) {
+                    upcomingData.push({
+                        date: date,
+                        tasks: tasks
+                    });
+                }
+            });
+
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'title',
+                    right: 'prev,next'
+                },
+                events: events,
+                eventContent: function(arg) {
+                    const textDecoration = arg.event.extendedProps.completed ? 'line-through' : 'none';
+                    const opacity = arg.event.extendedProps.completed ? '0.7' : '1';
+                    return { html: `<div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: ${textDecoration}; opacity: ${opacity};"><strong>${arg.event.extendedProps.subject}</strong> ${arg.event.extendedProps.task}</div>` }
+                }
+            });
+            calendar.render();
+
+            const sidebarEl = document.getElementById('upcomingList');
+            if (upcomingData.length === 0) {
+                sidebarEl.innerHTML = '<p style="color:var(--text-muted);">No upcoming tasks. Go set a goal!</p>';
+            } else {
+                let html = '';
+                upcomingData.slice(0, 5).forEach(dayObj => {
+                    const displayDate = new Date(dayObj.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+                    
+                    html += `<div class="date-group">
+                        <h3>${dayObj.date === todayStr ? 'Today' : displayDate}</h3>
+                    `;
+                    
+                    dayObj.tasks.forEach((t, i) => {
+                        const taskId = `${dayObj.date}_${t.subject}_${i}`;
+                        const isCompleted = !!taskStatus[taskId];
+                        const textDim = isCompleted ? 'opacity: 0.5; text-decoration: line-through;' : '';
+                        
+                        const colors = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
+                        const colorIdx = t.subject.length % colors.length;
+                        const subjectColor = colors[colorIdx];
+
+                        html += `
+                        <div class="task-card" style="${textDim}">
+                            <div class="task-subject">
+                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${subjectColor}; margin-right:8px;"></span>
+                                ${t.subject}
+                            </div>
+                            <div class="task-title">${t.task}</div>
+                        </div>
+                        `;
+                    });
+                    
+                    html += `</div>`;
+                });
+                sidebarEl.innerHTML = html;
+            }
+        });
+    </script>
+</body>
+</html>
