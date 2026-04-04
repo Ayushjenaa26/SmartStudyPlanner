@@ -5,6 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>All Tasks - StudyFlow</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/auth.js" defer></script>
+    <!-- Load docx library with defer to ensure it loads before interactive code runs -->
+    <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+    <style>
+        .download-section { display: flex; gap: 12px; margin-bottom: 24px; }
+        .btn-download { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+        .btn-download:hover { background: var(--primary-hover); }
+        .tasks-by-date { margin-top: 24px; }
+        .date-section h3 { font-size: 14px; font-weight: 600; color: var(--text-dark); margin: 24px 0 12px 0; padding-bottom: 8px; border-bottom: 2px solid var(--primary); }
+        .task-card-detailed { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; display: flex; gap: 16px; align-items: flex-start; }
+        .task-card-detailed.completed { opacity: 0.6; }
+        .task-card-detailed.overdue { border-left: 4px solid var(--red-text); }
+        .task-checkbox-detailed { width: 20px; height: 20px; border: 2px solid var(--border); border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+        .task-checkbox-detailed.checked { background: var(--primary); border-color: var(--primary); color: white; }
+        .task-content { flex: 1; }
+        .task-title-detailed { font-size: 14px; font-weight: 600; color: var(--text-dark); margin: 0 0 6px 0; }
+        .task-meta-detailed { display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+        .task-meta-item { display: flex; align-items: center; gap: 4px; }
+        .task-status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .badge-pending { background: var(--red-bg); color: var(--red-text); }
+        .badge-completed { background: var(--green-bg); color: var(--green-text); }
+        .badge-overdue { background: #fee2e2; color: #991b1b; }
+    </style>
 </head>
 <body>
     <div class="sidebar">
@@ -21,28 +44,34 @@
     <div class="main-wrapper">
         <div class="topbar">
             <div>
-                <div class="greeting">Welcome back</div>
-                <div class="name">Ayush</div>
+                <div class="greeting">Task Management</div>
+                <div class="name">All Study Tasks</div>
             </div>
             <div class="actions">
-                <button class="btn-outline">Profile</button>
-                <button class="btn-icon">☾</button>
-                <button class="btn-dark">Logout</button>
+                <div class="auth-status" id="authStatus">Checking sign-in...</div>
+                <button class="btn-outline" id="authActionBtn" type="button">Sign in</button>
+                <button class="btn-dark" onclick="window.location.href='/setup'">Set New Goal</button>
             </div>
         </div>
 
         <div class="content">
-            <div class="page-header-row">
-                <a href="/" class="back-btn">← Back to Dashboard</a>
-                <div style="text-align: right;">
-                    <h1 style="margin:0; font-size: 24px;">All Tasks</h1>
-                    <div id="statsCount" style="color:#64748b; font-size: 13px; margin-top:4px;">0 tasks shown</div>
+            <div class="download-section" style="display: flex; gap: 12px; margin-bottom: 24px; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-download" onclick="downloadAsWord()">📄 Download as Word Doc</button>
+                    <button class="btn-download" onclick="downloadAsJSON()">📋 Download as JSON</button>
+                </div>
+            </div>
+
+            <div id="subjectsSection" style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 12px 0; color: var(--text-dark);">Active Goals</h3>
+                <div id="subjectsList" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <!-- Populated by JS -->
                 </div>
             </div>
 
             <div class="metrics-row">
                 <div class="metric-card">
-                    <div class="title">Total</div>
+                    <div class="title">Total Tasks</div>
                     <div class="value val-blue" id="stat-total">0</div>
                 </div>
                 <div class="metric-card">
@@ -68,7 +97,7 @@
                 </div>
             </div>
 
-            <div class="task-list" id="allTasksList">
+            <div class="tasks-by-date" id="allTasksList">
                 <!-- Populate via JS -->
             </div>
         </div>
@@ -79,24 +108,53 @@
             const planStr = localStorage.getItem('studyPlan');
             let taskStatus = JSON.parse(localStorage.getItem('taskStatus')) || {};
             let allTasks = [];
+            let planData = {};
+            const todayStr = new Date().toISOString().split('T')[0];
             
             if (planStr) {
                 try {
-                    const planData = JSON.parse(planStr);
-                    const todayStr = new Date().toISOString().split('T')[0];
+                    planData = JSON.parse(planStr);
 
                     Object.keys(planData).forEach(date => {
                         planData[date].forEach((t, index) => {
                             const id = `${date}_${t.subject}_${index}`;
                             const isCompleted = !!taskStatus[id];
-                            const isOverdue = date < todayStr && !isCompleted;
+                            // Fix overdue logic: task is overdue only if date is in the past AND not completed
+                            const isOverdue = new Date(date) < new Date(todayStr) && !isCompleted;
                             
                             allTasks.push({
                                 id, date, subject: t.subject, task: t.task, isCompleted, isOverdue
                             });
                         });
                     });
-                } catch(e) {}
+                } catch(e) {
+                    console.error('Error parsing plan:', e);
+                }
+            }
+
+            // Sort tasks by date
+            allTasks.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Render subjects section with delete buttons
+            function renderSubjects() {
+                const subjectsList = document.getElementById('subjectsList');
+                const uniqueSubjects = [...new Set(allTasks.map(t => t.subject))];
+                
+                subjectsList.innerHTML = '';
+                uniqueSubjects.forEach(subject => {
+                    const subjectCount = allTasks.filter(t => t.subject === subject).length;
+                    const chip = document.createElement('div');
+                    chip.style.cssText = 'display: flex; align-items: center; gap: 8px; background: var(--bg-light); border: 1px solid var(--border); border-radius: 20px; padding: 8px 12px; font-size: 13px;';
+                    chip.innerHTML = `
+                        <span>${subject} (${subjectCount})</span>
+                        <button onclick="clearSubject('${subject}')" style="background: none; border: none; cursor: pointer; padding: 0; color: var(--red-text); font-size: 16px; display: flex; align-items: center;" title="Delete this goal">✕</button>
+                    `;
+                    subjectsList.appendChild(chip);
+                });
+                
+                if (uniqueSubjects.length === 0) {
+                    subjectsList.innerHTML = '<p style="color: var(--text-muted); margin: 0;">No active goals</p>';
+                }
             }
 
             let currentFilter = 'all';
@@ -119,32 +177,56 @@
                 document.getElementById('stat-completed').innerText = completed;
                 document.getElementById('stat-pending').innerText = pending;
                 document.getElementById('stat-overdue').innerText = overdue;
-                document.getElementById('statsCount').innerText = `${filtered.length} of ${total} tasks shown`;
 
+                // Group by date
+                const grouped = {};
                 filtered.forEach(t => {
-                    const card = document.createElement('div');
-                    card.className = `task-card ${t.isCompleted ? 'completed' : ''} ${t.isOverdue ? 'overdue' : ''}`;
-                    
-                    const formatDisplayDate = new Date(t.date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'});
-
-                    card.innerHTML = `
-                        <div class="task-main">
-                            <div class="task-checkbox-custom" onclick="toggleTask('${t.id}')"></div>
-                            <div>
-                                <h3 class="task-title">${t.task}</h3>
-                                <div class="task-meta">
-                                    <span>${t.subject}</span>
-                                    <span>•</span>
-                                    <span>Scheduled: ${formatDisplayDate}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <span class="task-tag tag-med">Medium</span>
-                        </div>
-                    `;
-                    listEl.appendChild(card);
+                    if (!grouped[t.date]) grouped[t.date] = [];
+                    grouped[t.date].push(t);
                 });
+
+                // Render grouped tasks
+                Object.keys(grouped).sort().forEach(date => {
+                    const dateObj = new Date(date);
+                    const displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+                    const isToday = date === todayStr;
+                    const isFuture = date > todayStr;
+
+                    const section = document.createElement('div');
+                    section.className = 'date-section';
+                    section.innerHTML = `<h3>${isToday ? '📅 Today' : isFuture ? '📆 Upcoming' : '⏰ Overdue'} - ${displayDate}</h3>`;
+
+                    grouped[date].forEach(t => {
+                        const card = document.createElement('div');
+                        card.className = `task-card-detailed ${t.isCompleted ? 'completed' : ''} ${t.isOverdue ? 'overdue' : ''}`;
+                        
+                        const statusBadge = t.isOverdue ? '<span class="task-status-badge badge-overdue">Overdue</span>' : 
+                                          t.isCompleted ? '<span class="task-status-badge badge-completed">Completed</span>' : 
+                                          '<span class="task-status-badge badge-pending">Pending</span>';
+
+                        card.innerHTML = `
+                            <div class="task-checkbox-detailed ${t.isCompleted ? 'checked' : ''}" onclick="toggleTask('${t.id}')">
+                                ${t.isCompleted ? '✓' : ''}
+                            </div>
+                            <div class="task-content">
+                                <h4 class="task-title-detailed">${t.task}</h4>
+                                <div class="task-meta-detailed">
+                                    <span class="task-meta-item"><strong>${t.subject}</strong></span>
+                                    <span class="task-meta-item">•</span>
+                                    <span class="task-meta-item">Scheduled: ${date}</span>
+                                </div>
+                                ${statusBadge}
+                            </div>
+                        `;
+                        section.appendChild(card);
+                    });
+
+                    listEl.appendChild(section);
+                });
+
+                if (filtered.length === 0) {
+                    listEl.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 40px; font-size: 14px;">No tasks match your filter. Good job staying on top of things!</p>';
+                }
             }
 
             window.toggleTask = function(id) {
@@ -152,14 +234,196 @@
                 if(task) {
                     task.isCompleted = !task.isCompleted;
                     if(task.isCompleted) {
-                        task.isOverdue = false; // completed tasks aren't overdue anymore
+                        task.isOverdue = false;
                     } else {
-                        const todayStr = new Date().toISOString().split('T')[0];
                         task.isOverdue = task.date < todayStr;
                     }
                     taskStatus[id] = task.isCompleted;
                     localStorage.setItem('taskStatus', JSON.stringify(taskStatus));
                     render();
+                }
+            };
+
+            window.downloadAsWord = async function() {
+                try {
+                    // Show loading state
+                    const btn = event?.target;
+                    if (btn) {
+                        const originalText = btn.innerText;
+                        btn.innerText = '⏳ Generating...';
+                        btn.disabled = true;
+                    }
+
+                    // Wait for docx library to load with extended timeout
+                    let docxLib = window.docx;
+                    let retries = 0;
+                    const maxRetries = 30; // Wait up to 3 seconds
+                    
+                    while (!docxLib && retries < maxRetries) {
+                        await new Promise(r => setTimeout(r, 100));
+                        docxLib = window.docx;
+                        retries++;
+                    }
+                    
+                    if (!docxLib) {
+                        throw new Error('Docx library failed to load from CDN. Please check your internet connection and try again.');
+                    }
+                    
+                    if (!docxLib.Document || !docxLib.Packer) {
+                        throw new Error('Docx library incomplete. Please refresh the page and try again.');
+                    }
+
+                    const { Document, Packer, Paragraph, HeadingLevel } = docxLib;
+                    
+                    const sections = [];
+                    
+                    // Title
+                    sections.push(new Paragraph({
+                        text: 'StudyFlow - Complete Study Plan',
+                        heading: HeadingLevel.HEADING_1,
+                    }));
+                    
+                    sections.push(new Paragraph({
+                        text: `Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`,
+                        spacing: { after: 400 }
+                    }));
+
+                    // Summary
+                    const total = allTasks.length;
+                    const completed = allTasks.filter(t => t.isCompleted).length;
+                    const pending = total - completed;
+                    const overdue = allTasks.filter(t => t.isOverdue).length;
+
+                    sections.push(new Paragraph({
+                        text: 'Summary Statistics',
+                        heading: HeadingLevel.HEADING_2
+                    }));
+                    
+                    sections.push(new Paragraph({
+                        text: `Total Tasks: ${total} | Completed: ${completed} | Pending: ${pending} | Overdue: ${overdue}`,
+                        spacing: { after: 400 }
+                    }));
+
+                    // Detailed tasks by date
+                    sections.push(new Paragraph({
+                        text: 'Complete Task Schedule',
+                        heading: HeadingLevel.HEADING_2
+                    }));
+
+                    const grouped = {};
+                    allTasks.forEach(t => {
+                        if (!grouped[t.date]) grouped[t.date] = [];
+                        grouped[t.date].push(t);
+                    });
+
+                    Object.keys(grouped).sort().forEach(date => {
+                        const dateObj = new Date(date);
+                        const displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+                        sections.push(new Paragraph({
+                            text: displayDate,
+                            heading: HeadingLevel.HEADING_3
+                        }));
+
+                        grouped[date].forEach(t => {
+                            const status = t.isOverdue ? 'OVERDUE' : t.isCompleted ? 'COMPLETED' : 'PENDING';
+                            const statusColor = t.isCompleted ? '✓' : t.isOverdue ? '✗' : '○';
+                            sections.push(new Paragraph({
+                                text: `${statusColor} [${t.subject}] ${t.task} (${status})`,
+                                spacing: { after: 200 }
+                            }));
+                        });
+                    });
+
+                    const doc = new Document({ 
+                        sections: [{ 
+                            children: sections,
+                            properties: {}
+                        }] 
+                    });
+                    
+                    Packer.toBlob(doc).then(blob => {
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `StudyPlan-${new Date().toISOString().split('T')[0]}.docx`;
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+                        link.click();
+                        
+                        // Cleanup
+                        setTimeout(() => {
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(url);
+                            if (btn) {
+                                btn.innerText = '📄 Download as Word Doc';
+                                btn.disabled = false;
+                            }
+                        }, 100);
+                    }).catch(err => {
+                        console.error('Blob creation error:', err);
+                        alert('Error creating Word document: ' + err.message);
+                        if (btn) {
+                            btn.innerText = '📄 Download as Word Doc';
+                            btn.disabled = false;
+                        }
+                    });
+                } catch (err) {
+                    console.error('Word download error:', err);
+                    alert('Error: ' + err.message);
+                    const btn = event?.target;
+                    if (btn) {
+                        btn.innerText = '📄 Download as Word Doc';
+                        btn.disabled = false;
+                    }
+                }
+            };
+
+            window.downloadAsJSON = function() {
+                const data = {
+                    generatedAt: new Date().toISOString(),
+                    summary: {
+                        total: allTasks.length,
+                        completed: allTasks.filter(t => t.isCompleted).length,
+                        pending: allTasks.filter(t => !t.isCompleted).length,
+                        overdue: allTasks.filter(t => t.isOverdue).length
+                    },
+                    tasks: allTasks
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `StudyPlan-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            };
+
+            window.clearSubject = function(subject) {
+                if (confirm(`Delete all tasks for "${subject}"? This will remove this subject and all its scheduled tasks.`)) {
+                    // Remove subject from plan
+                    Object.keys(planData).forEach(date => {
+                        planData[date] = planData[date].filter(t => t.subject !== subject);
+                        if (planData[date].length === 0) {
+                            delete planData[date];
+                        }
+                    });
+                    
+                    // Remove subject tasks from task status
+                    const subjectTaskIds = allTasks.filter(t => t.subject === subject).map(t => t.id);
+                    subjectTaskIds.forEach(id => {
+                        delete taskStatus[id];
+                    });
+                    
+                    // Update localStorage
+                    localStorage.setItem('studyPlan', JSON.stringify(planData));
+                    localStorage.setItem('taskStatus', JSON.stringify(taskStatus));
+                    
+                    // Refresh the page
+                    location.reload();
                 }
             };
 
@@ -172,6 +436,7 @@
                 });
             });
 
+            renderSubjects();
             render();
         });
     </script>

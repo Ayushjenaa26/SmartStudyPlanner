@@ -5,21 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planner - StudyFlow</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/auth.js" defer></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css' rel='stylesheet' />
     <style>
-        .layout { display: flex; gap: 30px; margin: 0 auto; height: 100%; }
+        .layout { display: flex; gap: 20px; flex: 1; }
         
-        .planner-sidebar { width: 350px; background: transparent; padding-right: 20px;}
-        .planner-sidebar h2 { margin-top: 0; font-size: 20px; color: var(--text-dark); margin-bottom: 8px;}
-        .planner-sidebar p.subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 24px;}
+        .planner-sidebar { width: 320px; background: transparent; flex-shrink: 0; display: flex; flex-direction: column;}
+        .planner-sidebar h2 { margin-top: 0; font-size: 18px; color: var(--text-dark); margin-bottom: 4px;}
+        .planner-sidebar p.subtitle { color: var(--text-muted); font-size: 13px; margin-bottom: 16px;}
         
-        .upcoming-list { display: flex; flex-direction: column; gap: 20px; max-height: calc(100vh - 200px); overflow-y: auto; padding-right: 10px;}
-        .date-group h3 { font-size: 12px; color: var(--text-muted); margin: 0 0 10px 0; font-weight: 600; text-transform: uppercase; }
-        .task-card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .task-subject { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text-dark); margin-bottom: 8px; font-size: 14px; }
-        .task-title { color: var(--text-muted); font-size: 13px; line-height: 1.4; }
+        .upcoming-list { display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto; padding-right: 8px;}
+        .date-group h3 { font-size: 11px; color: var(--text-muted); margin: 12px 0 8px 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .task-card { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+        .task-subject { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; font-size: 13px; }
+        .task-title { color: var(--text-main); font-size: 12px; line-height: 1.4; }
 
-        .main-content { flex: 1; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .main-content { flex: 1; background: white; padding: 16px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        #calendar { flex: 1; }
         
         /* FullCalendar Custom Overrides to match theme */
         .fc { font-family: inherit; }
@@ -49,14 +52,16 @@
         <div class="topbar">
             <div>
                 <div class="greeting">Calendar</div>
-                <div class="name">Schedule & Upcoming</div>
+                <div class="name">Schedule & Upcoming Tasks</div>
             </div>
             <div class="actions">
+                <div class="auth-status" id="authStatus">Checking sign-in...</div>
+                <button class="btn-outline" id="authActionBtn" type="button">Sign in</button>
                 <button class="btn-dark" onclick="window.location.href='/setup'">Set New Goal</button>
             </div>
         </div>
 
-        <div class="content">
+        <div class="content" style="flex: 1; display: flex; padding: 20px 40px;">
             <div class="layout">
                 <!-- Sidebar for Upcoming Tasks -->
                 <div class="planner-sidebar">
@@ -145,7 +150,7 @@
                 sidebarEl.innerHTML = '<p style="color:var(--text-muted);">No upcoming tasks. Go set a goal!</p>';
             } else {
                 let html = '';
-                upcomingData.slice(0, 5).forEach(dayObj => {
+                upcomingData.slice(0, 14).forEach(dayObj => {
                     const displayDate = new Date(dayObj.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
                     
                     html += `<div class="date-group">

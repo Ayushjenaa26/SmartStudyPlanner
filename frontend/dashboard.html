@@ -5,12 +5,150 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - StudyFlow</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/auth.js" defer></script>
     <style>
         .assistant-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
         .ast-card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; cursor: pointer; text-decoration: none; color: inherit; transition: border 0.2s;}
         .ast-card:hover { border-color: var(--primary); }
         .ast-card h4 { margin: 0 0 8px 0; color: var(--text-dark); }
         .ast-card p { margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.4;}
+        
+        /* Heatmap Styles */
+        .heatmap-container { 
+            background: white; 
+            border-radius: 8px; 
+            padding: 20px; 
+            margin-top: 20px;
+            border: 1px solid var(--border);
+        }
+        .heatmap-title { 
+            font-size: 14px; 
+            font-weight: 600; 
+            color: var(--text-dark); 
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .heatmap-wrapper {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+        .heatmap-month {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .month-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            height: 20px;
+            display: flex;
+            align-items: center;
+        }
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+        }
+        .heatmap-cell {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #e0e0e0;
+            background: #f0f0f0;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .heatmap-cell:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+        }
+        .heatmap-cell.empty {
+            background: #fafafa;
+            border-color: #e5e5e5;
+        }
+        .heatmap-cell.level-1 { background: #c6e48b; }
+        .heatmap-cell.level-2 { background: #7bc96f; }
+        .heatmap-cell.level-3 { background: #239a3b; }
+        .heatmap-cell.level-4 { background: #196127; }
+        
+        /* Today highlight effect */
+        .heatmap-cell.today {
+            box-shadow: 0 0 0 2px #fff, 0 0 6px rgba(59, 130, 246, 0.6);
+            border-color: #3b82f6;
+        }
+        .heatmap-cell.today::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 6px solid #3b82f6;
+        }
+        
+        /* Pulse animation for today */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0 2px #fff, 0 0 6px rgba(59, 130, 246, 0.6); }
+            50% { box-shadow: 0 0 0 2px #fff, 0 0 12px rgba(59, 130, 246, 1); }
+        }
+        .heatmap-cell.today.active { animation: pulse-glow 2s ease-in-out infinite; }
+        
+        .heatmap-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            z-index: 100;
+        }
+        .heatmap-cell:hover .heatmap-tooltip {
+            opacity: 1;
+        }
+        .heatmap-cell.today .heatmap-tooltip {
+            opacity: 1;
+            bottom: -35px;
+            color: #3b82f6;
+            background: transparent;
+        }
+        
+        .heatmap-legend {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-top: 16px;
+            font-size: 12px;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .legend-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            border: 1px solid #e0e0e0;
+        }
     </style>
 </head>
 <body>
@@ -29,12 +167,11 @@
         <div class="topbar">
             <div>
                 <div class="greeting">Welcome back</div>
-                <div class="name">Ayush</div>
+                <div class="name" id="userNameLabel">Guest</div>
             </div>
             <div class="actions">
-                <button class="btn-outline">Profile</button>
-                <button class="btn-icon">☾</button>
-                <button class="btn-dark">Logout</button>
+                <div class="auth-status" id="authStatus">Checking sign-in...</div>
+                <button class="btn-outline" id="authActionBtn" type="button">Sign in</button>
             </div>
         </div>
 
@@ -50,8 +187,34 @@
                     <span>Max Streak <span class="streak-val green">3 days</span></span>
                     <span>Current Streak <span class="streak-val green">2 days</span></span>
                 </div>
-                <div class="streak-grid" id="streakGrid">
-                    <!-- Javascript generated -->
+                <div class="heatmap-container">
+                    <div class="heatmap-title">Task Completion Heatmap (Last 12 Months)</div>
+                    <div class="heatmap-wrapper" id="heatmapWrapper">
+                        <!-- Generated by JavaScript -->
+                    </div>
+                    <div class="heatmap-legend">
+                        <span>Task Intensity:</span>
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #fafafa; border-color: #e5e5e5;"></div>
+                            <span>None</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #c6e48b;"></div>
+                            <span>1-2 tasks</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #7bc96f;"></div>
+                            <span>3-4 tasks</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #239a3b;"></div>
+                            <span>5-6 tasks</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #196127;"></div>
+                            <span>7+ tasks</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -82,7 +245,10 @@
                         <!-- Populated by JS -->
                     </div>
                     
-                    <a href="/tasks" style="display:block; text-align:center; color:var(--primary); text-decoration:none; font-size:14px; font-weight:600; margin-top:20px;">View All Tasks</a>
+                    <div style="display: flex; gap: 8px; margin-top: 20px;">
+                        <a href="/planner" style="flex: 1; text-align: center; color:var(--primary); text-decoration:none; font-size:14px; font-weight:600; padding: 8px; background: var(--bg-light); border-radius: 6px; border: 1px solid var(--border);">📅 View Calendar</a>
+                        <a href="/tasks" style="flex: 1; text-align: center; color:var(--primary); text-decoration:none; font-size:14px; font-weight:600; padding: 8px; background: var(--bg-light); border-radius: 6px; border: 1px solid var(--border);">📋 All Tasks</a>
+                    </div>
                 </div>
 
                 <!-- Goal Assistant Right -->
@@ -108,19 +274,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Render basic streak mock
-            let streakHtml = '';
-            for(let c=0; c<45; c++){ // approx columns
-                streakHtml += '<div class="streak-col">';
-                for(let r=0; r<7; r++){
-                    let activeClass = (c === 43 && r >= 5) || (c === 44 && r === 0) ? 'active' : '';
-                    streakHtml += `<div class="streak-box ${activeClass}"></div>`;
-                }
-                streakHtml += '</div>';
-            }
-            document.getElementById('streakGrid').innerHTML = streakHtml;
-
-            // Load today's tasks
+            // Load data
             const planStr = localStorage.getItem('studyPlan');
             let taskStatus = JSON.parse(localStorage.getItem('taskStatus')) || {};
             
@@ -128,14 +282,158 @@
             const displayOptions = { weekday: 'long', month: 'short', day: 'numeric' };
             document.getElementById('todayDateLabel').innerText = new Date().toLocaleDateString(undefined, displayOptions);
 
+            // Generate heatmap data
+            function generateHeatmapData() {
+                const data = {};
+                const today = new Date();
+                
+                // Start from 12 months ago
+                const startDate = new Date();
+                startDate.setFullYear(startDate.getFullYear() - 1);
+                
+                // Initialize all dates in range with 0 tasks
+                for (let i = 0; i < 365; i++) {
+                    const d = new Date(startDate);
+                    d.setDate(d.getDate() + i);
+                    const dateStr = d.toISOString().split('T')[0];
+                    data[dateStr] = { total: 0, completed: 0 };
+                }
+                
+                // Count tasks from plan
+                if (planStr) {
+                    try {
+                        const planData = JSON.parse(planStr);
+                        Object.entries(planData).forEach(([dateStr, tasks]) => {
+                            if (data[dateStr] && Array.isArray(tasks)) {
+                                data[dateStr].total = tasks.length;
+                                tasks.forEach((t, idx) => {
+                                    const id = `${dateStr}_${t.subject}_${idx}`;
+                                    if (taskStatus[id]) {
+                                        data[dateStr].completed++;
+                                    }
+                                });
+                            }
+                        });
+                    } catch(e) {
+                        console.error('Error parsing study plan:', e);
+                    }
+                }
+                
+                return { data, startDate, today };
+            }
+
+            function renderHeatmap() {
+                const { data, startDate, today } = generateHeatmapData();
+                const wrapper = document.getElementById('heatmapWrapper');
+                wrapper.innerHTML = '';
+                
+                const monthGroups = {};
+                const todayStr = today.toISOString().split('T')[0];
+                
+                // Group dates by month
+                Object.keys(data).sort().forEach(dateStr => {
+                    const date = new Date(dateStr);
+                    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    if (!monthGroups[monthKey]) {
+                        monthGroups[monthKey] = [];
+                    }
+                    monthGroups[monthKey].push({ dateStr, date, data: data[dateStr] });
+                });
+                
+                // Render each month
+                Object.entries(monthGroups).forEach(([monthKey, dates]) => {
+                    const monthDiv = document.createElement('div');
+                    monthDiv.className = 'heatmap-month';
+                    
+                    const monthLabel = document.createElement('div');
+                    monthLabel.className = 'month-label';
+                    const [year, month] = monthKey.split('-');
+                    const monthName = new Date(year, parseInt(month) - 1).toLocaleString('default', { month: 'short' });
+                    monthLabel.textContent = monthName;
+                    monthDiv.appendChild(monthLabel);
+                    
+                    const gridDiv = document.createElement('div');
+                    gridDiv.className = 'month-grid';
+                    
+                    // Create cells
+                    dates.forEach(({ dateStr, date, data: dayData }) => {
+                        const cell = document.createElement('div');
+                        cell.className = 'heatmap-cell';
+                        
+                        // Mark today
+                        const isToday = dateStr === todayStr;
+                        if (isToday) {
+                            cell.classList.add('today', 'active');
+                        }
+                        
+                        // Determine color level based on task count
+                        const taskCount = dayData.total;
+                        if (taskCount === 0) {
+                            cell.classList.add('empty');
+                        } else if (taskCount <= 2) {
+                            cell.classList.add('level-1');
+                        } else if (taskCount <= 4) {
+                            cell.classList.add('level-2');
+                        } else if (taskCount <= 6) {
+                            cell.classList.add('level-3');
+                        } else {
+                            cell.classList.add('level-4');
+                        }
+                        
+                        // Create tooltip
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'heatmap-tooltip';
+                        const dateDisplay = new Date(dateStr).toLocaleDateString('default', { month: 'short', day: 'numeric', weekday: 'short' });
+                        const completionRate = taskCount > 0 ? `${dayData.completed}/${taskCount}` : 'No tasks';
+                        const completionPercent = taskCount > 0 ? Math.round((dayData.completed / taskCount) * 100) : 0;
+                        
+                        if (isToday) {
+                            tooltip.textContent = `Today: ${completionRate} (${completionPercent}%)`;
+                        } else {
+                            tooltip.textContent = `${dateDisplay}: ${completionRate}`;
+                        }
+                        cell.appendChild(tooltip);
+                        
+                        gridDiv.appendChild(cell);
+                    });
+                    
+                    monthDiv.appendChild(gridDiv);
+                    wrapper.appendChild(monthDiv);
+                });
+            }
+
+            // Render heatmap
+            renderHeatmap();
+
             let todaysTasks = [];
+            let allTasksInPlan = [];
+            
             if (planStr) {
                 try {
                     const planData = JSON.parse(planStr);
                     if (planData[todayStr]) {
                         todaysTasks = planData[todayStr];
+                    } else {
+                        // If no tasks for today, show upcoming tasks instead
+                        const sortedDates = Object.keys(planData).sort();
+                        for (let date of sortedDates) {
+                            if (date >= todayStr) {
+                                todaysTasks = planData[date];
+                                const nextDate = new Date(date);
+                                const nextDateDisplay = nextDate.toLocaleDateString(undefined, displayOptions);
+                                document.getElementById('todayDateLabel').innerText = `Upcoming: ${nextDateDisplay}`;
+                                break;
+                            }
+                        }
                     }
-                } catch(e){}
+                    
+                    // Collect all tasks for debugging
+                    Object.values(planData).forEach(dayTasks => {
+                        if (Array.isArray(dayTasks)) allTasksInPlan.push(...dayTasks);
+                    });
+                } catch(e) {
+                    console.error('Error parsing study plan:', e);
+                }
             }
 
             const listEl = document.getElementById('dailyTasksList');
@@ -147,6 +445,9 @@
                 emptyEl.style.display = 'block';
                 progressFill.style.width = '0%';
                 progressText.innerText = '0/0';
+                if (allTasksInPlan.length > 0) {
+                    emptyEl.innerHTML = '<p style="margin: 0 0 12px 0;">No tasks for today, but you have upcoming tasks!</p><a href="/planner" style="color:var(--primary); text-decoration:none; font-weight:600; display:inline-block; padding: 8px 16px; background: var(--bg-light); border-radius: 6px; border: 1px solid var(--border);">📅 View Calendar</a>';
+                }
                 return;
             }
 
@@ -184,6 +485,8 @@
                 taskStatus[id] = !taskStatus[id];
                 localStorage.setItem('taskStatus', JSON.stringify(taskStatus));
                 renderDailyTasks();
+                // Re-render heatmap when task status changes
+                renderHeatmap();
             };
 
             renderDailyTasks();

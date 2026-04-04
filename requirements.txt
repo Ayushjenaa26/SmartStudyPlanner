@@ -4,3 +4,6 @@ python-multipart
 openai
 PyPDF2
 python-dotenv
+motor
+PyJWT
+cryptography
