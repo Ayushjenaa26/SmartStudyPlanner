@@ -17,6 +17,34 @@
         input[type="file"] { padding: 12px; border: 1px dashed var(--border); border-radius: 6px; background: var(--bg-light); cursor: pointer; color: var(--text-muted);}
         .help-text { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
         .loader { display: none; text-align: center; margin-top: 20px; padding: 20px; color: var(--primary); font-weight: 500; background: var(--primary-light); border-radius: 8px; border: 1px solid var(--primary);}
+        
+        /* Exam Dates Card Styles */
+        .exam-date-card { 
+            background: linear-gradient(135deg, var(--primary-light) 0%, rgba(29, 78, 216, 0.05) 100%);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(29, 78, 216, 0.1);
+        }
+        .exam-date-subject { font-weight: 600; color: var(--text-dark); font-size: 14px; margin-bottom: 8px; }
+        .exam-date-value { font-size: 13px; color: var(--primary); font-weight: 500; }
+        .days-until { font-size: 11px; color: var(--text-muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(29, 78, 216, 0.2); }
+        
+        /* Saved Plans Card Styles */
+        .plan-card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s; }
+        .plan-card:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(29, 78, 216, 0.1); }
+        .plan-card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; }
+        .plan-card-title { font-weight: 600; color: var(--text-dark); font-size: 14px; }
+        .plan-card-date { font-size: 12px; color: var(--text-muted); }
+        .plan-card-subjects { font-size: 13px; color: var(--text-dark); margin: 8px 0; }
+        .plan-card-subject-tag { display: inline-block; background: var(--primary-light); color: var(--primary); padding: 4px 8px; border-radius: 4px; font-size: 11px; margin-right: 6px; margin-bottom: 4px; }
+        .plan-card-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .btn-small { padding: 6px 12px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+        .btn-small-primary { background: var(--primary); color: white; }
+        .btn-small-primary:hover { opacity: 0.9; }
+        .btn-small-danger { background: var(--red-light, #fee2e2); color: var(--red-text, #dc2626); border: 1px solid var(--red-border, #fecaca); }
+        .btn-small-danger:hover { background: var(--red-border); }
     </style>
 </head>
 <body>
@@ -24,10 +52,11 @@
         <div class="logo">StudyFlow</div>
         <div class="subtitle">AI Smart Planner</div>
         <div class="nav-links">
-            <a href="/">Dashboard</a>
+            <a href="/dashboard">Dashboard</a>
             <a href="/planner">Planner</a>
             <a href="/tasks">All Tasks</a>
             <a href="/setup" class="active">Setup Goals</a>
+            <a href="/profile">Profile</a>
         </div>
     </div>
 
@@ -38,14 +67,28 @@
                 <div class="name">Subjects & Deadlines</div>
             </div>
             <div class="actions">
-                <div class="auth-status" id="authStatus">Checking sign-in...</div>
-                <button type="button" class="btn-outline" id="authActionBtn">Sign in</button>
                 <button type="button" class="btn-outline" id="addSubjectBtn">+ Add Subject</button>
             </div>
         </div>
 
-        <div class="content" style="max-width: 800px;">
-            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px;">Each subject gets its own exam date — the AI copilot plans backwards from it to map remaining coverage.</p>
+        <div class="content" style="max-width: 900px;">
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px;">Each subject gets its own exam date — the AI copilot plans backwards from it to map remaining coverage. You can create multiple study plans!</p>
+
+            <!-- Exam Dates Calendar View -->
+            <div id="examCalendarSection" style="margin-bottom: 32px; display: none; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+                <h2 style="font-size: 14px; color: var(--text-dark); margin: 0 0 16px; font-weight: 600; text-transform: uppercase;">Exam Schedule</h2>
+                <div id="examDatesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">
+                    <!-- Exam dates will be populated here -->
+                </div>
+            </div>
+
+            <!-- Previously Saved Plans Section -->
+            <div id="savedPlansSection" style="margin-bottom: 32px; display: none;">
+                <h2 style="font-size: 16px; color: var(--text-dark); margin: 0 0 16px; font-weight: 600; text-transform: uppercase;">Previous Study Plans</h2>
+                <div id="savedPlansContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 32px;">
+                    <!-- Plans will be loaded here -->
+                </div>
+            </div>
 
             <form id="studyForm">
                 <div id="subjectsContainer">
@@ -95,6 +138,306 @@
 
     <script>
         let subjectIndex = 1;
+        let examDates = {};  // Store exam dates by subject
+        
+        // Initialize auth and listen for changes
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('Setup: Initializing auth...');
+            await loadAuthConfig();
+            initializePageAuthUI();
+            loadSavedPlans();
+            autoLoadLatestPlan();
+        });
+        
+        // Listen for auth state changes from other tabs
+        window.addEventListener('authStateChanged', () => {
+            console.log('Setup: Auth state changed, refreshing UI');
+            initializePageAuthUI();
+        });
+
+        /**
+         * Update exam dates display
+         */
+        function updateExamDatesDisplay() {
+            const examSection = document.getElementById('examCalendarSection');
+            const examList = document.getElementById('examDatesList');
+            
+            // Collect all exam dates from form
+            examDates = {};
+            let hasExamDates = false;
+            
+            const form = document.getElementById('studyForm');
+            const inputs = form.querySelectorAll('input[name^="exam_date_"]');
+            
+            inputs.forEach(input => {
+                if (input.value) {
+                    const index = input.name.match(/\d+/)[0];
+                    const subjectInput = form.querySelector(`input[name="subject_name_${index}"]`);
+                    const subjectName = subjectInput ? subjectInput.value : `Subject ${parseInt(index) + 1}`;
+                    
+                    if (subjectName && input.value) {
+                        examDates[subjectName] = input.value;
+                        hasExamDates = true;
+                    }
+                }
+            });
+            
+            if (hasExamDates) {
+                examList.innerHTML = '';
+                
+                // Sort by exam date
+                const sortedDates = Object.entries(examDates)
+                    .sort((a, b) => new Date(a[1]) - new Date(b[1]));
+                
+                sortedDates.forEach(([subject, date]) => {
+                    const examDate = new Date(date);
+                    const today = new Date();
+                    const daysUntil = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    const dateStr = examDate.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                    
+                    const daysText = daysUntil > 0 
+                        ? `${daysUntil} days away`
+                        : daysUntil === 0
+                        ? 'Today!'
+                        : `${Math.abs(daysUntil)} days ago`;
+                    
+                    const card = document.createElement('div');
+                    card.className = 'exam-date-card';
+                    card.innerHTML = `
+                        <div class="exam-date-subject">${subject}</div>
+                        <div class="exam-date-value">${dateStr}</div>
+                        <div class="days-until">${daysText}</div>
+                    `;
+                    examList.appendChild(card);
+                });
+                
+                examSection.style.display = 'block';
+            } else {
+                examSection.style.display = 'none';
+            }
+        }
+
+        /**
+         * Load previously saved study plans from the database
+         */
+        async function loadSavedPlans() {
+            try {
+                const response = await authFetch('/api/plans');
+                if (!response.ok) throw new Error('Failed to load plans');
+                
+                const data = await response.json();
+                const plans = data.plans || [];
+                
+                if (plans.length > 0) {
+                    displaySavedPlans(plans);
+                }
+            } catch (error) {
+                console.error('Error loading plans:', error);
+            }
+        }
+
+        /**
+         * Display saved plans as cards
+         */
+        function displaySavedPlans(plans) {
+            const section = document.getElementById('savedPlansSection');
+            const container = document.getElementById('savedPlansContainer');
+            
+            container.innerHTML = '';
+            
+            plans.forEach(plan => {
+                const planCard = document.createElement('div');
+                planCard.className = 'plan-card';
+                
+                const formatDate = (dateStr) => {
+                    if (!dateStr) return 'Unknown date';
+                    const date = new Date(dateStr);
+                    return date.toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                    });
+                };
+                
+                const subjects = plan.subjects || [];
+                const subjectTags = subjects
+                    .map(s => `<span class="plan-card-subject-tag">${s.subjectName || s.name || 'Subject'}</span>`)
+                    .join('');
+                
+                planCard.innerHTML = `
+                    <div class="plan-card-header">
+                        <div>
+                            <div class="plan-card-title">${plan.planName}</div>
+                            <div class="plan-card-date">${formatDate(plan.generatedAt)}</div>
+                        </div>
+                    </div>
+                    <div class="plan-card-subjects">${subjectTags}</div>
+                    <div class="plan-card-actions">
+                        <button type="button" class="btn-small btn-small-primary" onclick="loadPlanData('${plan.id}')">View</button>
+                        <button type="button" class="btn-small btn-small-danger" onclick="deletePlan('${plan.id}')">Delete</button>
+                    </div>
+                `;
+                
+                container.appendChild(planCard);
+            });
+            
+            section.style.display = 'block';
+        }
+
+        /**
+         * Load a saved plan and display its data
+         */
+        async function loadPlanData(planId) {
+            try {
+                const response = await authFetch(`/api/plans/${planId}`);
+                if (!response.ok) throw new Error('Failed to load plan');
+                
+                const data = await response.json();
+                const plan = data.plan;
+                
+                // Scroll to form
+                document.getElementById('subjectsContainer').scrollIntoView({ behavior: 'smooth' });
+                
+                // Clear existing subjects
+                document.getElementById('subjectsContainer').innerHTML = '';
+                subjectIndex = 0;
+                examDates = {};
+                
+                // Populate form with plan data
+                plan.subjects.forEach((subject, index) => {
+                    addSubjectToForm(subject, index);
+                });
+                
+                // Update exam dates display
+                updateExamDatesDisplay();
+                
+                // Store the plan data for re-generation if needed
+                localStorage.setItem('loadedPlanId', planId);
+            } catch (error) {
+                alert('Failed to load plan: ' + error.message);
+            }
+        }
+
+        /**
+         * Add a subject to the form with data
+         */
+        function addSubjectToForm(subject, index) {
+            const container = document.getElementById('subjectsContainer');
+            
+            const examDate = subject.examDate ? new Date(subject.examDate).toISOString().split('T')[0] : '';
+            
+            const template = `
+                <div class="form-section">
+                    <div class="subject-number">Subject ${index + 1}</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Subject Name *</label>
+                            <input type="text" name="subject_name_${index}" value="${subject.subjectName || ''}" placeholder="e.g. Chemistry..." required onchange="updateExamDatesDisplay()">
+                        </div>
+                        <div class="form-group">
+                            <label>Exam Date *</label>
+                            <input type="date" name="exam_date_${index}" value="${examDate}" required onchange="updateExamDatesDisplay()">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Total Chapters / Modules</label>
+                            <input type="number" name="total_chapters_${index}" value="${subject.totalChapters || ''}" placeholder="e.g. 12" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Chapters Already Completed</label>
+                            <input type="number" name="chapters_completed_${index}" value="${subject.chaptersCompleted || ''}" placeholder="e.g. 5" min="0">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label>Portion Coming in Exam (e.g., 1-5)</label>
+                        <input type="text" name="portion_${index}" value="${subject.portion || ''}" placeholder="e.g. Chapters 1-5, Units 2-4">
+                        <div class="help-text">We will generate tasks only for the chapters mentioned here.</div>
+                    </div>
+                    <div class="form-group">
+                        <label style="color: var(--primary);">Syllabus PDF *</label>
+                        <input type="file" name="syllabus_pdf_${index}" accept=".pdf" required>
+                        <div class="help-text">Previous PDF: ${subject.syllabusSummary ? 'Loaded' : 'Not available'}</div>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', template);
+            subjectIndex = index + 1;
+        }
+
+        /**
+         * Delete a study plan
+         */
+        async function deletePlan(planId) {
+            if (!confirm('Are you sure you want to delete this plan and all its tasks?')) {
+                return;
+            }
+            
+            try {
+                const response = await authFetch(`/api/plans/${planId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error('Failed to delete plan');
+                
+                // Reload plans
+                loadSavedPlans();
+                alert('Plan deleted successfully');
+            } catch (error) {
+                alert('Failed to delete plan: ' + error.message);
+            }
+        }
+
+        /**
+         * Load and populate form with the latest study plan
+         */
+        async function autoLoadLatestPlan() {
+            try {
+                const response = await authFetch('/api/plans');
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                const plans = data.plans || [];
+                
+                if (plans.length === 0) return;
+                
+                // Get the most recent plan (first in list, assuming sorted by date descending)
+                const latestPlan = plans[0];
+                
+                // Clear existing subjects in form
+                document.getElementById('subjectsContainer').innerHTML = '';
+                subjectIndex = 0;
+                examDates = {};
+                
+                // Populate form with latest plan subject data
+                if (latestPlan.subjects && latestPlan.subjects.length > 0) {
+                    latestPlan.subjects.forEach((subject, index) => {
+                        addSubjectToForm(subject, index);
+                    });
+                    
+                    // Update exam dates display
+                    updateExamDatesDisplay();
+                    
+                    // Store the plan data for reference
+                    localStorage.setItem('loadedPlanId', latestPlan.id);
+                }
+            } catch (error) {
+                console.error('Error auto-loading latest plan:', error);
+            }
+        }
+
+        // Load saved plans and auto-load latest plan subjects on page load
+        window.addEventListener('load', () => {
+            initializePageAuthUI(); // Initialize auth UI
+            loadSavedPlans();
+            autoLoadLatestPlan();
+        });
 
         document.getElementById('addSubjectBtn').addEventListener('click', () => {
             const container = document.getElementById('subjectsContainer');
@@ -104,11 +447,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Subject Name *</label>
-                            <input type="text" name="subject_name_${subjectIndex}" placeholder="e.g. Chemistry..." required>
+                            <input type="text" name="subject_name_${subjectIndex}" placeholder="e.g. Chemistry..." required onchange="updateExamDatesDisplay()">
                         </div>
                         <div class="form-group">
                             <label>Exam Date *</label>
-                            <input type="date" name="exam_date_${subjectIndex}" required>
+                            <input type="date" name="exam_date_${subjectIndex}" required onchange="updateExamDatesDisplay()">
                         </div>
                     </div>
                     <div class="form-row">
@@ -149,26 +492,83 @@
 
             const formData = new FormData(form);
 
+            const mergeSchedules = (existing, incoming) => {
+                const merged = { ...existing };
+                Object.keys(incoming).forEach((date) => {
+                    const incomingTasks = Array.isArray(incoming[date]) ? incoming[date] : [];
+                    const existingTasks = Array.isArray(merged[date]) ? merged[date] : [];
+                    merged[date] = [...existingTasks, ...incomingTasks];
+                });
+                return merged;
+            };
+
             try {
                 const response = await authFetch('/api/generate-plan', {
                     method: 'POST',
                     body: formData
                 });
 
-                if (response.status === 401) {
-                    throw new Error('Please sign in with Auth0 before generating a plan.');
-                }
-
                 if (!response.ok) {
-                    throw new Error(`Error: ${response.statusText}`);
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || response.statusText);
                 }
 
                 const data = await response.json();
                 if (data.status === 'success') {
-                    // Save the generated JSON plan to local storage for Dashboard and Planner to use
-                    localStorage.setItem('studyPlan', JSON.stringify(data.plan));
-                    // Redirect to the Dashboard to see tasks
-                    window.location.href = "/";
+                    // Save only the date->tasks map for other pages
+                    const schedule = { ...data.plan };
+                    // Extract and store plan type
+                    const planType = schedule._planType || 'exam';
+                    delete schedule.plan_id;
+                    delete schedule._planType;
+                    
+                    // Ensure only valid date->tasks entries are in schedule
+                    const cleanedSchedule = {};
+                    Object.keys(schedule).forEach(key => {
+                        if (Array.isArray(schedule[key])) {
+                            cleanedSchedule[key] = schedule[key];
+                        }
+                    });
+
+                    // Merge with any existing schedule so older tasks remain
+                    let existingSchedule = {};
+                    try {
+                        const existingStr = localStorage.getItem('studyPlan');
+                        if (existingStr) {
+                            existingSchedule = JSON.parse(existingStr);
+                        }
+                    } catch (e) {
+                        existingSchedule = {};
+                    }
+
+                    const mergedSchedule = mergeSchedules(existingSchedule, cleanedSchedule);
+                    localStorage.setItem('studyPlan', JSON.stringify(mergedSchedule));
+                    localStorage.setItem('planType', planType);
+                    localStorage.removeItem('loadedPlanId');
+                    
+                    // Save to database if authenticated
+                    const token = await getAccessToken();
+                    if (token) {
+                        try {
+                            const saveResponse = await authFetch('/api/save-study-session', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    studyPlan: mergedSchedule,
+                                    taskStatus: {},
+                                    planType: planType
+                                })
+                            });
+                            if (saveResponse.ok) {
+                                console.log('[Setup] Study plan saved to database');
+                            }
+                        } catch (e) {
+                            console.warn('[Setup] Failed to save plan to database:', e);
+                        }
+                    }
+                    
+                    // Redirect directly to Dashboard (no alert message)
+                    window.location.href = "/dashboard";
                 } else {
                     alert("Failed to generate plan: " + data.message);
                 }

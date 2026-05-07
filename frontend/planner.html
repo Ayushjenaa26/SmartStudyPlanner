@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planner - StudyFlow</title>
     <link rel="stylesheet" href="/static/style.css">
-    <script src="/static/auth.js" defer></script>
+    <script defer src="/static/auth.js?v=2"></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css' rel='stylesheet' />
     <style>
@@ -21,19 +21,48 @@
         .task-subject { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; font-size: 13px; }
         .task-title { color: var(--text-main); font-size: 12px; line-height: 1.4; }
 
-        .main-content { flex: 1; background: white; padding: 16px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
-        #calendar { flex: 1; }
+        .main-content { flex: 1; background: white; padding: 16px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        #calendar { flex: 1; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; will-change: auto; }
+
+        #calendar, .fc, .fc-view-harness {
+            filter: none !important;
+            backdrop-filter: none !important;
+            transform: none !important;
+            opacity: 1 !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            -webkit-backface-visibility: hidden !important;
+            backface-visibility: hidden !important;
+        }
         
-        /* FullCalendar Custom Overrides to match theme */
+        .fc * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
         .fc { font-family: inherit; }
         .fc-toolbar-title { font-size: 1.25em !important; color: var(--text-dark); font-weight: 600 !important;}
         .fc-button-primary { background-color: white !important; color: var(--text-dark) !important; border-color: var(--border) !important; text-transform: capitalize !important;}
         .fc-button-primary:hover { background-color: var(--bg-light) !important; }
         .fc-button-active { background-color: var(--primary) !important; color: white !important; border-color: var(--primary) !important; }
         .fc-event { background-color: var(--primary-light); border: 1px solid var(--primary); color: var(--primary); border-radius: 4px; padding: 2px 4px; font-size: 11px; margin-bottom: 2px; cursor: pointer;}
-        .fc-daygrid-day-number { color: var(--text-dark); font-size: 14px; text-decoration: none;}
+        .fc-daygrid-day-top { display: flex; justify-content: flex-end; }
+        .fc-daygrid-day-number { color: var(--text-dark); font-size: 14px; text-decoration: none; position: relative; z-index: 5; padding: 2px 6px; background: rgba(255,255,255,0.92); border-radius: 6px; font-weight: 600;}
+        .fc-daygrid-day.fc-day-other .fc-daygrid-day-number { color: #94a3b8; }
+        .fc-daygrid-day-frame { min-height: 120px; }
         .fc-col-header-cell { padding: 8px 0; background: var(--bg-light); border-color: var(--border) !important;}
         .fc-theme-standard td, .fc-theme-standard th { border-color: var(--border); }
+
+        .sidebar-hint {
+            color: var(--text-muted);
+            font-size: 12px;
+            text-align: center;
+            margin-top: 8px;
+            padding: 8px;
+            background: #f8fafc;
+            border-radius: 6px;
+            border: 1px dashed #e2e8f0;
+        }
     </style>
 </head>
 <body>
@@ -41,10 +70,11 @@
         <div class="logo">StudyFlow</div>
         <div class="subtitle">AI Smart Planner</div>
         <div class="nav-links">
-            <a href="/">Dashboard</a>
+            <a href="/dashboard">Dashboard</a>
             <a href="/planner" class="active">Planner</a>
+            <a href="/resources">Resources</a>
             <a href="/tasks">All Tasks</a>
-            <a href="/setup">Setup Goals</a>
+            <a href="/profile">Profile</a>
         </div>
     </div>
 
@@ -55,8 +85,6 @@
                 <div class="name">Schedule & Upcoming Tasks</div>
             </div>
             <div class="actions">
-                <div class="auth-status" id="authStatus">Checking sign-in...</div>
-                <button class="btn-outline" id="authActionBtn" type="button">Sign in</button>
                 <button class="btn-dark" onclick="window.location.href='/setup'">Set New Goal</button>
             </div>
         </div>
@@ -68,7 +96,7 @@
                     <h2>Upcoming Tasks</h2>
                     <p class="subtitle">Stay on track with your scheduled study plan</p>
                     <div id="upcomingList" class="upcoming-list">
-                        <!-- Javascript will populate this -->
+                        <p style="color:var(--text-muted);">Loading tasks...</p>
                     </div>
                 </div>
 
@@ -81,31 +109,184 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const planStr = localStorage.getItem('studyPlan');
-            const taskStatus = JSON.parse(localStorage.getItem('taskStatus')) || {};
-            let planData = {};
+        // ── FIX 1: fetch the LATEST plan (which includes planJson) not the list ──
+        async function getLatestPlanFromBackend() {
             try {
-                if (planStr) planData = JSON.parse(planStr);
+                const response = await authFetch('/api/plans/latest');
+                if (!response.ok) return null;
+
+                const data = await response.json();
+                if (!data.plan) return null;
+
+                // planJson holds the date→tasks schedule
+                const schedule = data.plan.planJson || {};
+                if (Object.keys(schedule).length > 0) {
+                    localStorage.setItem('studyPlan', JSON.stringify(schedule));
+                }
+                return schedule;
             } catch (e) {
-                console.error("Error parsing plan", e);
+                console.warn('Planner: Failed to load plan from backend', e);
+                return null;
+            }
+        }
+
+        // ── FIX 2: show upcoming tasks for today + next N days, not just today ──
+        function renderUpcomingTasks(planData, taskStatus, selectedDate) {
+            const sidebarEl = document.getElementById('upcomingList');
+
+            // If a specific date is clicked, show that date's tasks
+            if (selectedDate) {
+                const tasks = Array.isArray(planData[selectedDate]) ? planData[selectedDate] : [];
+                if (tasks.length === 0) {
+                    sidebarEl.innerHTML = '<p style="color:var(--text-muted);">No tasks for this day.</p><p class="sidebar-hint">Click another date on the calendar to view tasks.</p>';
+                    return;
+                }
+                const displayDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+                sidebarEl.innerHTML = buildTaskGroupHTML(selectedDate, displayDate, tasks, taskStatus);
+                return;
             }
 
-            const events = [];
-            const upcomingData = [];
-            const sortedDates = Object.keys(planData).sort();
+            // Default: show today + next 7 days that have tasks
             const todayStr = new Date().toISOString().split('T')[0];
+            const sortedDates = Object.keys(planData)
+                .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key) && key >= todayStr)
+                .sort()
+                .slice(0, 15); // look ahead up to 15 dates
+
+            // Collect dates with tasks (max 5 upcoming dates shown)
+            const datesWithTasks = sortedDates.filter(date => {
+                const tasks = planData[date];
+                return Array.isArray(tasks) && tasks.length > 0;
+            }).slice(0, 5);
+
+            if (datesWithTasks.length === 0) {
+                // ── FIX 3: if nothing upcoming, show most recent past tasks instead ──
+                const pastDates = Object.keys(planData)
+                    .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key) && key < todayStr)
+                    .sort()
+                    .reverse()
+                    .slice(0, 3);
+
+                if (pastDates.length === 0) {
+                    sidebarEl.innerHTML = '<p style="color:var(--text-muted);">No tasks scheduled yet. <a href="/setup">Set a new goal</a> to generate your plan!</p>';
+                    return;
+                }
+
+                let html = '<p style="color:var(--text-muted);font-size:12px;margin-bottom:8px;">No upcoming tasks — showing recent past tasks:</p>';
+                for (const date of pastDates) {
+                    const tasks = planData[date];
+                    if (!Array.isArray(tasks) || tasks.length === 0) continue;
+                    const displayDate = new Date(date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+                    html += buildTaskGroupHTML(date, displayDate, tasks, taskStatus);
+                }
+                sidebarEl.innerHTML = html;
+                return;
+            }
+
+            let html = '';
+            for (const date of datesWithTasks) {
+                const tasks = planData[date];
+                const isToday = date === todayStr;
+                const displayDate = isToday
+                    ? 'Today'
+                    : new Date(date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+                html += buildTaskGroupHTML(date, displayDate, tasks, taskStatus);
+            }
+
+            html += '<p class="sidebar-hint">Click any date on the calendar to view its tasks.</p>';
+            sidebarEl.innerHTML = html;
+        }
+
+        function buildTaskGroupHTML(date, displayLabel, tasks, taskStatus) {
+            const colors = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
+            let html = `<div class="date-group"><h3>${displayLabel}</h3>`;
+            tasks.forEach((t, i) => {
+                const taskId = `${date}_${t.subject}_${i}`;
+                const isCompleted = !!(taskStatus || {})[taskId];
+                const textDim = isCompleted ? 'opacity: 0.5; text-decoration: line-through;' : '';
+                const colorIdx = (t.subject || '').length % colors.length;
+                const subjectColor = colors[colorIdx];
+                html += `
+                <div class="task-card" style="${textDim}">
+                    <div class="task-subject">
+                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${subjectColor};margin-right:8px;"></span>
+                        ${t.subject || 'General'}
+                    </div>
+                    <div class="task-title">${t.task || ''}</div>
+                </div>`;
+            });
+            html += `</div>`;
+            return html;
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('Planner: Initializing auth...');
+            initializePageAuthUI();
+
+            window.addEventListener('authStateChanged', () => {
+                initializePageAuthUI();
+            });
+
+            // FIX 9: Always fetch the latest plan from /api/plans/latest on page load
+            async function loadPlan() {
+                try {
+                    const res = await authFetch('/api/plans/latest');
+                    if (res && res.ok) {
+                        const data = await res.json();
+                        if (data.plan && data.plan.planJson) {
+                            const planJson = data.plan.planJson;
+                            localStorage.setItem('studyPlan', JSON.stringify(planJson));
+                            console.log('[Planner] Plan loaded from backend');
+                            return planJson;
+                        }
+                    } else {
+                        console.warn('[Planner] Backend returned non-ok status:', res?.status);
+                    }
+                } catch (e) {
+                    console.warn('[Planner] Could not fetch plan from backend:', e);
+                }
+                
+                // Fallback: use cached plan from localStorage if backend fails
+                try {
+                    const cached = localStorage.getItem('studyPlan');
+                    if (cached) {
+                        let parsed = JSON.parse(cached);
+                        // Unwrap nested .plan if present
+                        if (parsed.plan && typeof parsed.plan === 'object' && !Array.isArray(parsed.plan)) {
+                            parsed = parsed.plan;
+                        }
+                        console.log('[Planner] Using cached plan from localStorage');
+                        return parsed;
+                    }
+                } catch (e) {
+                    console.error('[Planner] Error parsing cached plan', e);
+                }
+                
+                console.log('[Planner] No plan found');
+                return {};
+            }
+
+            // Load plan and render UI
+            let planData = await loadPlan();
+            const taskStatus = JSON.parse(localStorage.getItem('taskStatus') || '{}');
+
+            // ── Build calendar events ──
+            const events = [];
+            const todayStr = new Date().toISOString().split('T')[0];
+            const sortedDates = Object.keys(planData)
+                .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key))
+                .sort();
 
             sortedDates.forEach(date => {
                 const tasks = planData[date];
-                
+                if (!Array.isArray(tasks)) return;
+
                 tasks.forEach((t, i) => {
                     const taskId = `${date}_${t.subject}_${i}`;
                     const isCompleted = !!taskStatus[taskId];
-                    
                     const color = isCompleted ? '#10b981' : '#6366f1';
                     const bgColor = isCompleted ? '#ecfdf5' : '#e0e7ff';
-                    
+
                     events.push({
                         title: `${t.subject}: ${t.task}`,
                         start: date,
@@ -113,74 +294,61 @@
                         backgroundColor: bgColor,
                         borderColor: color,
                         textColor: color,
-                        extendedProps: {
-                            subject: t.subject,
-                            task: t.task,
-                            completed: isCompleted
-                        }
+                        extendedProps: { subject: t.subject, task: t.task, completed: isCompleted }
                     });
                 });
-
-                if (date >= todayStr) {
-                    upcomingData.push({
-                        date: date,
-                        tasks: tasks
-                    });
-                }
             });
 
-            var calendarEl = document.getElementById('calendar');
-            var calendar = new FullCalendar.Calendar(calendarEl, {
+            // ── Init calendar ──
+            const calendarEl = document.getElementById('calendar');
+            const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
-                headerToolbar: {
-                    left: 'title',
-                    right: 'prev,next'
-                },
+                headerToolbar: { left: 'title', right: 'prev,next' },
                 events: events,
+                dateClick: function(info) {
+                    renderUpcomingTasks(planData, taskStatus, info.dateStr);
+                },
+                eventClick: function(info) {
+                    // Show only the clicked task
+                    const event = info.event;
+                    const subject = event.extendedProps.subject;
+                    const task = event.extendedProps.task;
+                    const date = info.event.startStr;
+                    
+                    const sidebarEl = document.getElementById('upcomingList');
+                    const displayDate = new Date(date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+                    
+                    const colors = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
+                    const colorIdx = (subject || '').length % colors.length;
+                    const subjectColor = colors[colorIdx];
+                    
+                    const isCompleted = event.extendedProps.completed;
+                    const textDim = isCompleted ? 'opacity: 0.5; text-decoration: line-through;' : '';
+                    
+                    sidebarEl.innerHTML = `
+                        <div class="date-group">
+                            <h3>${displayDate}</h3>
+                            <div class="task-card" style="${textDim}">
+                                <div class="task-subject">
+                                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${subjectColor};margin-right:8px;"></span>
+                                    ${subject || 'General'}
+                                </div>
+                                <div class="task-title">${task || ''}</div>
+                            </div>
+                        </div>
+                        <p class="sidebar-hint">Click another event to view it, or click a date to view all tasks for that day.</p>
+                    `;
+                },
                 eventContent: function(arg) {
-                    const textDecoration = arg.event.extendedProps.completed ? 'line-through' : 'none';
-                    const opacity = arg.event.extendedProps.completed ? '0.7' : '1';
-                    return { html: `<div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: ${textDecoration}; opacity: ${opacity};"><strong>${arg.event.extendedProps.subject}</strong> ${arg.event.extendedProps.task}</div>` }
+                    const td = arg.event.extendedProps.completed ? 'line-through' : 'none';
+                    const op = arg.event.extendedProps.completed ? '0.7' : '1';
+                    return { html: `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:${td};opacity:${op};cursor:pointer;"><strong>${arg.event.extendedProps.subject}</strong> ${arg.event.extendedProps.task}</div>` };
                 }
             });
             calendar.render();
 
-            const sidebarEl = document.getElementById('upcomingList');
-            if (upcomingData.length === 0) {
-                sidebarEl.innerHTML = '<p style="color:var(--text-muted);">No upcoming tasks. Go set a goal!</p>';
-            } else {
-                let html = '';
-                upcomingData.slice(0, 14).forEach(dayObj => {
-                    const displayDate = new Date(dayObj.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-                    
-                    html += `<div class="date-group">
-                        <h3>${dayObj.date === todayStr ? 'Today' : displayDate}</h3>
-                    `;
-                    
-                    dayObj.tasks.forEach((t, i) => {
-                        const taskId = `${dayObj.date}_${t.subject}_${i}`;
-                        const isCompleted = !!taskStatus[taskId];
-                        const textDim = isCompleted ? 'opacity: 0.5; text-decoration: line-through;' : '';
-                        
-                        const colors = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
-                        const colorIdx = t.subject.length % colors.length;
-                        const subjectColor = colors[colorIdx];
-
-                        html += `
-                        <div class="task-card" style="${textDim}">
-                            <div class="task-subject">
-                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${subjectColor}; margin-right:8px;"></span>
-                                ${t.subject}
-                            </div>
-                            <div class="task-title">${t.task}</div>
-                        </div>
-                        `;
-                    });
-                    
-                    html += `</div>`;
-                });
-                sidebarEl.innerHTML = html;
-            }
+            // ── Render sidebar (upcoming from today) ──
+            renderUpcomingTasks(planData, taskStatus, null);
         });
     </script>
 </body>

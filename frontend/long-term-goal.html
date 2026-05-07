@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Long-term Goal - StudyFlow</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script defer src="/static/auth.js"></script>
+    <style>
+        .form-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .form-row { display: grid; gap: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        .form-label { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+        .form-input { padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+        .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+        .radio-group { display: flex; gap: 12px; flex-wrap: wrap; }
+        .radio-pill { border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; cursor: pointer; font-size: 13px; }
+        .radio-pill input { margin-right: 6px; }
+        .error-text { color: var(--red-text); font-size: 12px; display: none; }
+        .loading-box { display: none; margin-top: 20px; background: var(--bg-light); border: 1px solid var(--border); border-radius: 10px; padding: 16px; color: var(--text-muted); font-size: 14px; }
+        .success-panel { display: none; margin-top: 24px; background: white; border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+        .phase-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 14px 0 18px 0; }
+        .phase-segment { background: var(--bg-light); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; font-size: 12px; font-weight: 600; color: var(--text-dark); }
+        .success-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+        .success-actions .btn-dark { text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">StudyFlow</div>
+        <div class="subtitle">AI Smart Planner</div>
+        <div class="nav-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/planner">Planner</a>
+            <a href="/resources">Resources</a>
+            <a href="/tasks">All Tasks</a>
+            <a href="/profile">Profile</a>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="topbar">
+            <div>
+                <div class="greeting">Long-term Mission</div>
+                <div class="name">Build a realistic study plan</div>
+            </div>
+            <div class="actions">
+                <button class="btn-dark" onclick="window.location.href='/planner'">View Planner</button>
+            </div>
+        </div>
+
+        <div class="content" style="max-width: 900px;">
+            <div class="form-card" id="longTermFormCard">
+                <div class="panel-title" style="margin-bottom: 12px;">Tell us about your long-term goal</div>
+                <div class="panel-subtitle" style="margin-bottom: 18px;">No detailed syllabus needed. We will infer topics and pace for you.</div>
+
+                <form id="longTermForm" class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="goalInput">What is your goal?</label>
+                        <input class="form-input" id="goalInput" name="goal" placeholder="e.g. Clear CA Foundation" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="targetDateInput">Target date</label>
+                        <input class="form-input" type="date" id="targetDateInput" name="target_date" required />
+                        <div class="error-text" id="dateError">Target date must be in the future.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="subjectsInput">Subjects / Topics (optional)</label>
+                        <input class="form-input" id="subjectsInput" name="subjects" placeholder="Maths, Accounts, Economics" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="dailyHoursInput">Daily hours</label>
+                        <input class="form-input" type="number" min="1" max="16" step="0.5" id="dailyHoursInput" name="daily_hours" placeholder="e.g. 2" required />
+                        <div class="error-text" id="hoursError">Daily hours must be greater than 0.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Current level</label>
+                        <div class="radio-group">
+                            <label class="radio-pill"><input type="radio" name="level" value="Beginner" required /> Beginner</label>
+                            <label class="radio-pill"><input type="radio" name="level" value="Intermediate" /> Intermediate</label>
+                            <label class="radio-pill"><input type="radio" name="level" value="Advanced" /> Advanced</label>
+                        </div>
+                    </div>
+
+                    <button class="btn-dark" type="submit">Generate My Plan</button>
+                </form>
+
+                <div class="loading-box" id="loadingBox">Building your personalized plan…</div>
+                <div class="error-text" id="formError" style="margin-top: 12px;"></div>
+            </div>
+
+            <div class="success-panel" id="successPanel">
+                <div class="panel-title" id="successTitle">Your plan is ready!</div>
+                <div class="panel-subtitle" id="successSubtitle"></div>
+                <div class="phase-bar">
+                    <div class="phase-segment">Foundation</div>
+                    <div class="phase-segment">Core</div>
+                    <div class="phase-segment">Revision</div>
+                    <div class="phase-segment">Practice</div>
+                </div>
+                <div class="success-actions">
+                    <a class="btn-dark" href="/planner">View in Planner</a>
+                    <a class="btn-outline" href="/dashboard">See Today's Tasks</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            initializePageAuthUI();
+        });
+
+        function mergeSchedules(existing, incoming) {
+            const merged = { ...existing };
+            Object.keys(incoming).forEach((date) => {
+                const incomingTasks = Array.isArray(incoming[date]) ? incoming[date] : [];
+                const existingTasks = Array.isArray(merged[date]) ? merged[date] : [];
+                merged[date] = [...existingTasks, ...incomingTasks];
+            });
+            return merged;
+        }
+
+        function countSummary(plan) {
+            const subjects = new Set();
+            let totalTasks = 0;
+            const dates = Object.keys(plan);
+            dates.forEach((date) => {
+                const tasks = plan[date];
+                if (!Array.isArray(tasks)) return;
+                totalTasks += tasks.length;
+                tasks.forEach((task) => {
+                    if (task.subject) subjects.add(task.subject);
+                });
+            });
+            return { days: dates.length, totalTasks, subjects: subjects.size };
+        }
+
+        document.getElementById('longTermForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const goal = document.getElementById('goalInput').value.trim();
+            const targetDate = document.getElementById('targetDateInput').value;
+            const subjects = document.getElementById('subjectsInput').value.trim();
+            const dailyHours = document.getElementById('dailyHoursInput').value;
+            const level = document.querySelector('input[name="level"]:checked')?.value;
+
+            const dateError = document.getElementById('dateError');
+            const hoursError = document.getElementById('hoursError');
+            const formError = document.getElementById('formError');
+            const loadingBox = document.getElementById('loadingBox');
+
+            dateError.style.display = 'none';
+            hoursError.style.display = 'none';
+            formError.style.display = 'none';
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (!targetDate || targetDate <= todayStr) {
+                dateError.style.display = 'block';
+                return;
+            }
+
+            if (!dailyHours || Number(dailyHours) <= 0) {
+                hoursError.style.display = 'block';
+                return;
+            }
+
+            loadingBox.style.display = 'block';
+
+            try {
+                const response = await authFetch('/api/generate-longterm-plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        goal,
+                        target_date: targetDate,
+                        subjects: subjects || null,
+                        daily_hours: dailyHours,
+                        level
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Plan generation failed. Please try again.');
+                }
+
+                const data = await response.json();
+                if (data.status !== 'success' || !data.plan || !data.plan.plan) {
+                    throw new Error('Plan generation failed. Please try again.');
+                }
+
+                const plan = data.plan.plan;
+                const planType = data.plan.planType || 'longterm';
+                let existingSchedule = {};
+                try {
+                    const existingStr = localStorage.getItem('studyPlan');
+                    if (existingStr) {
+                        existingSchedule = JSON.parse(existingStr);
+                    }
+                } catch (e) {
+                    existingSchedule = {};
+                }
+
+                const mergedSchedule = mergeSchedules(existingSchedule, plan);
+                localStorage.setItem('studyPlan', JSON.stringify(mergedSchedule));
+                localStorage.setItem('planType', planType);
+
+                // Save to database if authenticated
+                const token = await getAccessToken();
+                if (token) {
+                    try {
+                        const saveResponse = await authFetch('/api/save-study-session', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                studyPlan: mergedSchedule,
+                                taskStatus: {},
+                                planType: planType
+                            })
+                        });
+                        if (saveResponse.ok) {
+                            console.log('[Long-term Goal] Study plan saved to database');
+                        }
+                    } catch (e) {
+                        console.warn('[Long-term Goal] Failed to save plan to database:', e);
+                    }
+                }
+
+                await authFetch('/api/save-plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        planName: goal,
+                        subjects: subjects ? subjects.split(',').map(s => ({ subjectName: s.trim() })).filter(s => s.subjectName) : [],
+                        plan: data.plan,
+                        generatedAt: new Date().toISOString()
+                    })
+                });
+
+                const summary = countSummary(plan);
+                document.getElementById('successSubtitle').textContent = `Your plan is ready! ${summary.days} days, ${summary.totalTasks} total tasks across ${summary.subjects} subjects.`;
+
+                document.getElementById('longTermFormCard').style.display = 'none';
+                document.getElementById('successPanel').style.display = 'block';
+            } catch (error) {
+                formError.textContent = error.message || 'Plan generation failed. Please try again.';
+                formError.style.display = 'block';
+            } finally {
+                loadingBox.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>SmartStudy Planner | AI-Powered Study Assistant with OAuth & Token Vault</title>
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Google Fonts & simple CSS reset -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <!-- Font Awesome 6 (free icons) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="/static/auth.js" defer></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      line-height: 1.5;
+      scroll-behavior: smooth;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* header / nav */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 0;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      width: 40px;
+      height: 40px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: white;
+    }
+
+    .logo h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #1e293b, #3b82f6);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 16px;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #cbd5e1;
+      padding: 10px 22px;
+      border-radius: 40px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #1e293b;
+    }
+
+    .btn-outline:hover {
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 40px;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      transition: 0.2s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+    }
+
+    /* hero */
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 60px 0 40px;
+    }
+
+    .hero-badge {
+      background: #e0f2fe;
+      padding: 6px 14px;
+      border-radius: 40px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #0369a1;
+      margin-bottom: 24px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hero h2 {
+      font-size: 3.2rem;
+      font-weight: 800;
+      background: linear-gradient(to right, #0f172a, #3b82f6);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      max-width: 800px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      color: #334155;
+      max-width: 700px;
+      margin-top: 24px;
+    }
+
+    .hero-cta {
+      margin-top: 32px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* features grid */
+    .section-title {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 60px 0 32px;
+      position: relative;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 28px;
+      margin-bottom: 48px;
+    }
+
+    .feature-card {
+      background: white;
+      border-radius: 28px;
+      padding: 28px 24px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.05);
+      transition: all 0.25s;
+      border: 1px solid #eef2ff;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 24px 40px rgba(0,0,0,0.08);
+      border-color: #cbdffc;
+    }
+
+    .feature-icon {
+      background: #eef2ff;
+      width: 56px;
+      height: 56px;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      color: #3b82f6;
+      margin-bottom: 20px;
+    }
+
+    .feature-card h3 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .feature-card p {
+      color: #475569;
+      margin-bottom: 20px;
+    }
+
+    .oauth-badge {
+      background: #f1f5f9;
+      padding: 4px 12px;
+      border-radius: 30px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #1e40af;
+      display: inline-block;
+    }
+
+    /* OAuth + Token Vault special section */
+    .token-vault-section {
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      border-radius: 2rem;
+      padding: 48px 40px;
+      margin: 48px 0 56px;
+      color: white;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .vault-text {
+      flex: 2;
+    }
+
+    .vault-text h3 {
+      font-size: 1.8rem;
+      margin-bottom: 16px;
+      font-weight: 700;
+    }
+
+    .vault-text p {
+      color: #cbd5e1;
+      margin-bottom: 20px;
+    }
+
+    .vault-icon {
+      flex: 1;
+      text-align: center;
+      font-size: 5rem;
+      background: rgba(255,255,255,0.05);
+      border-radius: 60px;
+      padding: 20px;
+    }
+
+    /* demo / interactive toaster */
+    .demo-zone {
+      background: #ffffff;
+      border-radius: 32px;
+      box-shadow: 0 20px 35px -12px rgba(0,0,0,0.1);
+      margin: 40px 0 60px;
+      padding: 32px 32px 40px;
+      text-align: center;
+    }
+
+    .demo-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 18px;
+      margin: 28px 0 16px;
+    }
+
+    .simulate-btn {
+      background: #f1f5f9;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 40px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .simulate-btn i {
+      font-size: 1.1rem;
+    }
+
+    .simulate-btn:hover {
+      background: #e2e8f0;
+      transform: scale(0.98);
+    }
+
+    .toast-msg {
+      background: #0f172a;
+      color: white;
+      padding: 14px 20px;
+      border-radius: 60px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.9rem;
+      margin-top: 20px;
+      max-width: 90%;
+    }
+
+    /* footer */
+    footer {
+      text-align: center;
+      padding: 40px 0 32px;
+      border-top: 1px solid #e2e8f0;
+      margin-top: 40px;
+      color: #5b6e8c;
+    }
+
+    @media (max-width: 700px) {
+      .hero h2 { font-size: 2.2rem; }
+      .navbar { flex-direction: column; }
+      .token-vault-section { flex-direction: column; text-align: center; }
+    }
+
+    /* interactive notification */
+    .hidden-toast { display: none; }
+
+    /* signup name modal */
+    .signup-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .signup-modal.hidden {
+      display: none !important;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-content h3 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #0f172a;
+    }
+
+    .modal-content p {
+      font-size: 0.95rem;
+      color: #475569;
+      margin-bottom: 20px;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: 'Inter', sans-serif;
+      margin-bottom: 20px;
+      transition: all 0.2s ease;
+    }
+
+    .modal-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      transition: 0.2s;
+    }
+
+    .modal-btn-cancel {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .modal-btn-cancel:hover {
+      background: #e2e8f0;
+    }
+
+    .modal-btn-confirm {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .modal-btn-confirm:hover {
+      background: #2563eb;
+    }
+
+    /* user display */
+    .user-display-section {
+      background: #f0f9ff;
+      border: 2px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      text-align: center;
+      display: none;
+    }
+
+    .user-display-section.show {
+      display: block;
+    }
+
+    .user-display-label {
+      font-size: 0.85rem;
+      color: #0369a1;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .user-display-name {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Signup Name Modal -->
+<div id="signupNameModal" class="signup-modal hidden">
+  <div class="modal-content">
+    <h3>What's your name?</h3>
+    <p>We'll display this on your dashboard</p>
+    <input
+      type="text"
+      id="signupNameInput"
+      class="modal-input"
+      placeholder="Enter your name"
+      autocomplete="name"
+    />
+    <div class="modal-buttons">
+      <button id="signupNameCancelBtn" class="modal-btn modal-btn-cancel">Cancel</button>
+      <button id="signupNameConfirmBtn" class="modal-btn modal-btn-confirm">Continue</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Navigation with real login/signup simulation -->
+  <div class="navbar">
+    <div class="logo">
+      <div class="logo-icon"><i class="fas fa-brain"></i></div>
+      <h1>SmartStudy<span style="color:#3b82f6;">Planner</span></h1>
+    </div>
+    <div class="nav-buttons">
+      <button class="btn-outline" id="googleNavBtn" style="display:none;"><i class="fab fa-google"></i> Google</button>
+      <button class="btn-outline" id="signupNavBtn"><i class="fas fa-user-plus"></i> Sign Up</button>
+      <button class="btn-primary" id="loginNavBtn"><i class="fas fa-key"></i> Log In</button>
+      <button class="btn-dark" id="logoutBtn" style="display:none;" onclick="logoutWithAuth0()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+      <button class="btn-primary" id="dashboardBtn" style="display:none;" onclick="window.location.href='/dashboard'"><i class="fas fa-chart-line"></i> Go to Dashboard</button>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">
+      <i class="fas fa-shield-alt"></i> Powered by Auth0 for AI Agents
+    </div>
+    <!-- User Display Section -->
+    <div id="userDisplay" class="user-display-section">
+      <div class="user-display-label">Welcome back!</div>
+      <div class="user-display-name">Loading...</div>
+    </div>
+    <h2>Your AI study companion,<br>secured by Token Vault</h2>
+    <p>Smart study planner that reads your calendar, suggests optimal study slots, and respects your privacy — without ever touching your passwords.</p>
+    <div class="hero-cta">
+      <button class="btn-primary" id="heroLoginBtn" style="padding: 14px 32px; font-size:1rem;"><i class="fas fa-robot"></i> Get started — AI access</button>
+      <button class="btn-outline" id="learnMoreBtn"><i class="fas fa-chevron-circle-right"></i> How OAuth works</button>
+    </div>
+  </div>
+
+  <!-- Features Grid (explain study planner + OAuth) -->
+  <div class="section-title">
+    ✨ Why students love SmartStudy Planner
+  </div>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon"><i class="fas fa-calendar-check"></i></div>
+      <h3>Calendar intelligence</h3>
+      <p>Connects to Google Calendar via <strong>Auth0 Token Vault</strong>. Agent finds free blocks, avoids class overlaps, and suggests deep study sessions.</p>
+      <span class="oauth-badge"><i class="fas fa-lock"></i> OAuth 2.0 + refresh tokens</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="fas fa-robot"></i></div>
+      <h3>AI Study Scheduler</h3>
+      <p>Natural language: "Find me 3 hours tomorrow for CS prep". AI agent uses <strong>delegated authorization</strong> and respects your consent.</p>
+      <span class="oauth-badge"><i class="fas fa-magic"></i> LLM + calendar tools</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="fas fa-shield-hooded"></i></div>
+      <h3>Zero password exposure</h3>
+      <p>Your Google credentials never touch our backend. Token Vault stores & rotates tokens securely — human-in-the-loop consent always.</p>
+      <span class="oauth-badge"><i class="fas fa-vault"></i> Token Vault ready</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="fas fa-clock"></i></div>
+      <h3>Async approvals</h3>
+      <p>Need to post to Slack or add a task? Agent requests step‑up auth. You approve from mobile — stays in control.</p>
+      <span class="oauth-badge"><i class="fas fa-mobile-alt"></i> CIBA ready</span>
+    </div>
+  </div>
+
+  <!-- Deep dive OAuth + Token Vault section -->
+  <div class="token-vault-section">
+    <div class="vault-text">
+      <h3><i class="fas fa-database"></i> How Auth0 for AI Agents powers this</h3>
+      <p><strong>Connected Accounts for Token Vault</strong> lets your AI assistant act on your behalf — but only what you explicitly allow. Every request to Google Calendar is mediated by short-lived access tokens stored inside Auth0. No API keys embedded in agent code. No credential leaks.</p>
+      <p><i class="fas fa-check-circle" style="color:#10b981;"></i> Refresh token rotation & consent delegation out-of-the-box. Your study planner never stores secrets — it just asks Token Vault: "Give me a fresh token for user X".</p>
+    </div>
+    <div class="vault-icon">
+      <i class="fas fa-people-arrows"></i>
+      <div style="font-size: 0.9rem; margin-top: 12px;">Agent ↔ Token Vault</div>
+    </div>
+  </div>
+
+  <!-- Interactive demo: simulate Token Vault + OAuth login flow -->
+  <div class="demo-zone">
+    <h3><i class="fas fa-hand-pointer"></i> Interactive demo: Token Vault in action</h3>
+    <p style="color: #475569; max-width: 600px; margin: 8px auto;">Click below to simulate how the AI agent retrieves a Google Calendar token via Auth0 (mock consent flow).</p>
+    <div class="demo-buttons">
+      <button id="simulateConsentBtn" class="simulate-btn"><i class="fab fa-google"></i> Connect Google Calendar (Token Vault)</button>
+      <button id="simulateAgentReadBtn" class="simulate-btn"><i class="fas fa-calendar-week"></i> Agent: "Find free study time"</button>
+      <button id="simulateAsyncApprovalBtn" class="simulate-btn"><i class="fas fa-comment-dots"></i> Async approval (Slack status)</button>
+    </div>
+    <div id="interactiveToast" class="toast-msg hidden-toast">
+      <i class="fas fa-circle-info"></i> <span id="toastMessage">Demo message</span>
+    </div>
+    <div style="margin-top: 28px; font-size: 0.85rem; background:#f1f5f9; padding: 12px; border-radius: 24px;">
+      <i class="fas fa-lightbulb"></i> <strong>Real OAuth flow:</strong> After login, user grants <code>calendar.events.readonly</code> scope. Auth0 stores refresh token. AI agent uses <code>getAccessTokenForConnection()</code> → Google API works seamlessly.
+    </div>
+  </div>
+
+  <!-- Extra blog / hackathon note -->
+  <div style="background:#eef2ff; border-radius: 28px; padding: 32px; text-align:center; margin-bottom: 40px;">
+    <i class="fas fa-trophy" style="font-size: 2rem; color:#f59e0b;"></i>
+    <h4 style="margin: 12px 0;">🏆 Built for "Authorized to Act" Hackathon</h4>
+    <p>Uses <strong>Token Vault</strong> from Auth0 for AI Agents. Secure, consent-driven, and privacy-first study assistant. Check the video & repo included.</p>
+  </div>
+
+  <footer>
+    <p><i class="fas fa-lock"></i> Powered by Auth0 AI Agents — Token Vault • OAuth2 • CIBA • FGA ready</p>
+    <p style="margin-top: 12px;">© 2026 SmartStudy Planner — Sovereign AI for students</p>
+  </footer>
+</div>
+
+<script>
+  // Interactive demo simulation: showing how Token Vault + OAuth + async flows work
+  // No actual backend, but educates user and mirrors hackathon requirements.
+  const toastDiv = document.getElementById('interactiveToast');
+  const toastMsgSpan = document.getElementById('toastMessage');
+
+  function showMessage(message, isError = false) {
+    toastMsgSpan.innerText = message;
+    toastDiv.classList.remove('hidden-toast');
+    toastDiv.style.background = isError ? '#991b1b' : '#0f172a';
+    toastDiv.style.color = 'white';
+    // auto hide after 4 seconds
+    setTimeout(() => {
+      toastDiv.classList.add('hidden-toast');
+    }, 4500);
+  }
+
+  // Simulate consent + token vault connection
+  document.getElementById('simulateConsentBtn').addEventListener('click', () => {
+    // mock oauth consent screen experience
+    showMessage('🔐 OAuth consent screen → User approved "Calendar.ReadOnly" → Auth0 Token Vault now stores refresh token for this user. ✅ Agent can request tokens securely.', false);
+    // optional: extra style to simulate grant
+    const btn = document.getElementById('simulateConsentBtn');
+    btn.innerHTML = '<i class="fab fa-google"></i> ✅ Connected (Token Vault active)';
+    btn.style.background = '#dcfce7';
+    btn.style.color = '#166534';
+    setTimeout(() => {
+      btn.innerHTML = '<i class="fab fa-google"></i> Connect Google Calendar (Token Vault)';
+      btn.style.background = '#f1f5f9';
+      btn.style.color = 'inherit';
+    }, 4000);
+  });
+
+  // simulate AI agent reading calendar via token vault
+  document.getElementById('simulateAgentReadBtn').addEventListener('click', () => {
+    showMessage('🤖 AI agent calls getAccessTokenForConnection({connection:"google-oauth2", scopes:["calendar.readonly"]}) → Token Vault returns valid access token → Fetching events: "Free slots: Tomorrow 2-4 PM, Wednesday 10 AM-12 PM" ✅', false);
+  });
+
+  // simulate async approval (step-up auth) for posting to Slack
+  document.getElementById('simulateAsyncApprovalBtn').addEventListener('click', () => {
+    showMessage('📲 [Async Auth] Agent wants to post "Studying mode 🧠" to Slack. Auth0 sends push approval to your device → You click "Approve" → Agent executes action. (Human-in-the-loop + Token Vault)', false);
+  });
+
+  // LEARN MORE: smooth scroll to OAuth section
+  document.getElementById('learnMoreBtn').addEventListener('click', () => {
+    document.querySelector('.token-vault-section').scrollIntoView({ behavior: 'smooth' });
+    showMessage('⚡ Auth0 for AI Agents: Token Vault, OAuth delegation, refresh tokens never exposed to agent.', false);
+  });
+
+  // Attach real Auth0 actions to homepage auth buttons.
+  const loginBtns = ['loginNavBtn', 'heroLoginBtn'];
+  const signupBtns = ['signupNavBtn'];
+  const googleBtns = ['googleNavBtn'];
+
+  loginBtns.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if (window.loginWithAuth0) {
+          window.loginWithAuth0();
+        }
+      });
+    }
+  });
+
+  signupBtns.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if (window.signupWithAuth0) {
+          window.signupWithAuth0();
+        }
+      });
+    }
+  });
+
+  googleBtns.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if (window.loginWithGoogle) {
+          window.loginWithGoogle();
+        }
+      });
+    }
+  });
+
+  // extra fallback for the hero button already covered, but ensure "heroLoginBtn" is used.
+  // Also, add a small hover effect for feature cards to explain OAuth roles.
+  const featureCards = document.querySelectorAll('.feature-card');
+  featureCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const title = card.querySelector('h3')?.innerText;
+      if (title && title.includes('Calendar')) {
+        showMessage('📅 Calendar intelligence: Token Vault calls Google Calendar API using OAuth2. No direct secrets.', false);
+      } else if (title && title.includes('AI Study')) {
+        showMessage('🧠 AI Scheduler uses LangChain + Auth0 AI SDK to retrieve tokens and suggest study times.', false);
+      } else if (title && title.includes('Zero password')) {
+        showMessage('🔒 Token Vault ensures your Google refresh token stays inside Auth0. Agent requests tokens on-demand.', false);
+      } else if (title && title.includes('Async approvals')) {
+        showMessage('📱 CIBA flow: Agent sends approval request to Auth0, user authorizes from phone. Perfect for sensitive actions.', false);
+      }
+    });
+  });
+
+  // explain token vault concept on load
+  window.addEventListener('load', () => {
+    console.log('SmartStudy Planner: Ready. Auth0 Token Vault demo interactive.');
+    if (window.getAccessToken) {
+      window.getAccessToken().then((token) => {
+        if (token) {
+          window.location.replace('/dashboard');
+        }
+      }).catch(() => {
+        // Keep homepage visible if token check fails.
+      });
+    }
+    // show initial subtle toast
+    setTimeout(() => {
+      showMessage('🚀 SmartStudy Planner uses Auth0 for AI Agents: Token Vault + OAuth2. Try the demo buttons above!', false);
+    }, 1000);
+  });
+</script>
+</body>
+</html>

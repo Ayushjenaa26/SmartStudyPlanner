@@ -45,17 +45,17 @@ def _get_jwks_client(domain: str) -> jwt.PyJWKClient:
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-) -> dict[str, Any] | None:
+) -> dict[str, Any]:
+    """Get current user from auth token. Raises 401 if no valid credentials provided."""
     auth_settings = get_auth_settings()
+    
+    # If auth is not configured, allow guest access (return empty dict)
     if not auth_settings["enabled"]:
-        return None
-
+        return {}
+    
+    # If no credentials provided, raise 401
     if credentials is None or not credentials.credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Auth0 access token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
     domain = auth_settings["domain"]
     audience = auth_settings["audience"]
@@ -72,8 +72,6 @@ def get_current_user(
         )
         return payload
     except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid Auth0 token: {exc}",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from exc
+        # Invalid or expired token
+        print(f"Auth token validation failed: {exc}")
+        raise HTTPException(status_code=401, detail="Invalid or expired token")

@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Profile - StudyFlow</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script defer src="/static/auth.js"></script>
+    <style>
+        .profile-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .profile-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .profile-header {
+            text-align: center;
+            margin-bottom: 32px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 24px;
+        }
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 36px;
+            margin: 0 auto 16px;
+        }
+        .profile-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+        .profile-email {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .profile-section {
+            margin-bottom: 24px;
+        }
+        .profile-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .profile-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+        .profile-item:last-child {
+            border-bottom: none;
+        }
+        .profile-label {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .profile-value {
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-box {
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .btn-secondary {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover {
+            background: var(--border);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn-primary-action {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn-primary-action:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .btn-danger {
+            flex: 1;
+            padding: 12px 16px;
+            background: #fee2e2;
+            color: #991b1b;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn-danger:hover {
+            background: #fecaca;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .settings-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 24px;
+        }
+        .settings-heading {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+        }
+        .settings-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+        .form-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-input {
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        .form-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .error-message {
+            color: #dc2626;
+            font-size: 14px;
+            margin-top: 12px;
+            padding: 12px;
+            background: #fee2e2;
+            border-radius: 6px;
+            display: none;
+        }
+        .success-message {
+            color: #059669;
+            font-size: 14px;
+            margin-top: 12px;
+            padding: 12px;
+            background: #dcfce7;
+            border-radius: 6px;
+            display: none;
+        }
+        .info-message {
+            color: #1d4ed8;
+            font-size: 14px;
+            margin-top: 12px;
+            padding: 12px;
+            background: #dbeafe;
+            border-radius: 6px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        .modal-header {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 24px;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">StudyFlow</div>
+        <div class="subtitle">AI Smart Planner</div>
+        <div class="nav-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/planner">Planner</a>
+            <a href="/resources">Resources</a>
+            <a href="/tasks">All Tasks</a>
+            <a href="/profile" class="active">Profile</a>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="topbar">
+            <div>
+                <div class="greeting">Account</div>
+                <div class="name" id="pageSubtitle">Your Profile</div>
+            </div>
+            <div class="actions">
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Profile Settings Section -->
+            <div class="settings-section">
+                <div class="settings-heading">Profile Settings</div>
+                <div class="settings-subtitle">Edit your display name and request password reset via email.</div>
+                
+                <div class="form-group">
+                    <label class="form-label">Display Name</label>
+                    <input type="text" id="displayNameInput" class="form-input" placeholder="Enter your name">
+                </div>
+
+                <div class="form-buttons">
+                    <button class="btn-secondary" onclick="saveDisplayName()">Save Name</button>
+                    <button class="btn-primary-action" onclick="requestPasswordReset(event)">Reset Password</button>
+                </div>
+
+                <div id="profileMessage" class="error-message"></div>
+                <div id="profileSuccess" class="success-message"></div>
+            </div>
+
+
+        </div>
+    </div>
+
+    <script>
+        let currentUserEmail = null;
+        let currentToken = null;
+
+        async function loadProfileData() {
+            try {
+                // Load authentication status using getAccessToken from auth.js
+                console.log('[Profile] loadProfileData starting...');
+                
+                // CRITICAL: Ensure auth is fully initialized BEFORE getting token
+                await ensureAuthInitialized();
+                console.log('[Profile] Auth initialized');
+                
+                const token = await getAccessToken();
+                currentToken = token;
+                
+                console.log('[Profile] Token available:', !!token);
+                console.log('[Profile] Token in localStorage:', !!localStorage.getItem('smartstudyplanner_auth0_id_token'));
+                
+                if (token) {
+                    const decoded = parseJwt(token);
+                    currentUserEmail = decoded?.email;
+                    console.log('[Profile] Email from token:', currentUserEmail);
+                }
+                
+                if (token) {
+                    try {
+                        // First try to get stored display name from backend
+                        console.log('Fetching user profile from backend...');
+                        
+                        // Use authFetch if available
+                        const authFetchFn = window.authFetch || (async (url, options) => {
+                            const headers = new Headers(options.headers || {});
+                            if (!headers.has('Authorization')) {
+                                headers.set('Authorization', `Bearer ${token}`);
+                            }
+                            return fetch(url, { ...options, headers });
+                        });
+                        
+                        const response = await authFetchFn('/api/me', {
+                            method: 'GET'
+                        });
+                        
+                        console.log('Backend /api/me response status:', response.status);
+                        
+                        if (response.ok) {
+                            const userData = await response.json();
+                            console.log('User data from backend:', userData);
+                            
+                            // Check if user authenticated
+                            if (userData.status === 'authenticated' && userData.user) {
+                                const email = userData.user.email;
+                                
+                                // Try to get stored displayName, fall back to Auth0 name
+                                let displayName = userData.user.displayName || userData.user.name || getDisplayName(userData.user);
+                                
+                                document.getElementById('displayNameInput').value = displayName;
+                                document.getElementById('displayNameInput').placeholder = 'Enter your name';
+                                localStorage.setItem('userDisplayName', displayName);
+                                console.log('✓ User authenticated as:', displayName, 'Email:', email);
+                                return;
+                            } else {
+                                console.log('User not authenticated (guest mode)');
+                            }
+                        } else {
+                            console.warn('Backend /api/me returned non-ok status:', response.status);
+                        }
+                        
+                        // Fallback: use token data if backend fetch fails or returns guest
+                        console.log('Falling back to token data...');
+                        const decoded = parseJwt(token);
+                        const displayName = getDisplayName(decoded);
+                        document.getElementById('displayNameInput').value = displayName;
+                        document.getElementById('displayNameInput').placeholder = 'Enter your name';
+                        localStorage.setItem('userDisplayName', displayName);
+                        console.log('✓ User authenticated (from token):', displayName);
+                    } catch (e) {
+                        console.error('Error loading profile:', e);
+                        // If it failed but we have a token, maybe there's a backend error. Try falling back to token one last time.
+                        if (token) {
+                            try {
+                                const decoded = parseJwt(token);
+                                document.getElementById('displayNameInput').value = getDisplayName(decoded);
+                                document.getElementById('displayNameInput').placeholder = 'Enter your name';
+                                return;
+                            } catch(err) {
+                                console.error('Secondary error formatting token', err);
+                            }
+                        }
+                        document.getElementById('displayNameInput').placeholder = 'Sign in to edit your name';
+                    }
+                } else {
+                    // Guest mode - just leave the form empty
+                    document.getElementById('displayNameInput').placeholder = 'Sign in to edit your name';
+                    console.log('Guest mode - no valid authentication token found');
+                }
+            } catch (e) {
+                console.error('Error loading profile:', e);
+            }
+        }
+
+        async function saveDisplayName() {
+            const displayName = document.getElementById('displayNameInput').value.trim();
+            
+            if (!displayName) {
+                showProfileError('Please enter a display name');
+                return;
+            }
+
+            try {
+                console.log('[SaveName] Starting save for:', displayName);
+                
+                // CRITICAL: Ensure auth is initialized BEFORE getting token
+                await ensureAuthInitialized();
+                console.log('[SaveName] Auth initialized');
+                
+                // Get token using getAccessToken from auth.js for proper validation
+                const token = await getAccessToken();
+                
+                console.log('[SaveName] Token available:', !!token);
+                console.log('[SaveName] Token in localStorage:', !!localStorage.getItem('smartstudyplanner_auth0_id_token'));
+                
+                if (!token) {
+                    showProfileError('❌ No authentication token. Please sign in first.');
+                    return;
+                }
+
+                // Use authFetch if available, otherwise use fetch with token
+                const authFetchFn = window.authFetch || (async (url, options) => {
+                    const headers = new Headers(options.headers || {});
+                    if (!headers.has('Authorization')) {
+                        headers.set('Authorization', `Bearer ${token}`);
+                    }
+                    return fetch(url, { ...options, headers });
+                });
+
+                // Call backend API to update display name
+                console.log('saveDisplayName: Calling backend /api/users/me...');
+                const response = await authFetchFn('/api/users/me', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ displayName: displayName })
+                });
+
+                console.log('saveDisplayName: Response status:', response.status);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    console.error('saveDisplayName: Backend error:', error);
+                    showProfileError(error.detail || 'Failed to update name');
+                    return;
+                }
+
+                const result = await response.json();
+                console.log('saveDisplayName: Backend response:', result);
+                
+                // Update localStorage so dashboard picks up the new name
+                localStorage.setItem('userDisplayName', displayName);
+                
+                // Notify other tabs
+                window.dispatchEvent(new CustomEvent('authStateChanged', {
+                    detail: {
+                        updated: 'displayName',
+                        timestamp: Date.now()
+                    }
+                }));
+                
+                // Show success message
+                const successMsg = document.getElementById('profileSuccess');
+                successMsg.textContent = '✓ Display name updated successfully';
+                successMsg.style.display = 'block';
+                
+                console.log('✓ Display name saved successfully');
+                
+                setTimeout(() => {
+                    successMsg.style.display = 'none';
+                }, 3000);
+            } catch (e) {
+                console.error('Error saving display name:', e);
+                showProfileError('Error: ' + e.message);
+            }
+        }
+
+        function showProfileError(message) {
+            const errorMsg = document.getElementById('profileMessage');
+            errorMsg.textContent = '✗ ' + message;
+            errorMsg.style.display = 'block';
+            
+            setTimeout(() => {
+                errorMsg.style.display = 'none';
+            }, 4000);
+        }
+
+        async function requestPasswordReset(event) {
+            try {
+                await ensureAuthInitialized();
+
+                // Get the token directly without strict auth check
+                const token = await getAccessToken();
+                
+                console.log('Password reset - Token check:', { tokenExists: !!token });
+                
+                if (!token) {
+                    const emailPrompt = window.prompt('Enter your account email to receive a reset link:');
+                    if (!emailPrompt || !emailPrompt.includes('@')) {
+                        showProfileError('Please enter a valid email address.');
+                        return;
+                    }
+
+                    await sendPasswordResetEmail(emailPrompt, null, event);
+                    return;
+                }
+                
+                // Decode token to get email
+                const decoded = parseJwt(token);
+                const email = decoded?.email;
+                
+                console.log('Password reset request:', { 
+                    email,
+                    tokenExists: !!token,
+                    tokenLength: token.length 
+                });
+                
+                if (!email) {
+                    showProfileError('Could not determine your email address');
+                    return;
+                }
+                
+                await sendPasswordResetEmail(email, token, event);
+                
+            } catch (e) {
+                console.error('Error requesting password reset:', e);
+                showProfileError('Error: ' + e.message);
+                const btn = document.querySelector('button[onclick*="requestPasswordReset"]');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Reset Password';
+                }
+            }
+        }
+
+        async function sendPasswordResetEmail(email, token, event) {
+            // Show loading state
+            const btn = event?.target || document.querySelector('button[onclick*="requestPasswordReset"]');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Sending...';
+            }
+
+            // Use authFetch if available, otherwise use fetch with token
+            const authFetchFn = window.authFetch || (async (url, options) => {
+                const headers = new Headers(options.headers || {});
+                if (token && !headers.has('Authorization')) {
+                    headers.set('Authorization', `Bearer ${token}`);
+                }
+                return fetch(url, { ...options, headers });
+            });
+
+            // Call backend to request password reset
+            const response = await authFetchFn('/api/users/me/request-password-reset', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email })
+            });
+
+            console.log('Password reset response status:', response.status);
+
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('Password reset error:', error);
+                showProfileError(error.detail || 'Failed to send password reset email');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Reset Password';
+                }
+                return;
+            }
+
+            // Show success message
+            const successMsg = document.getElementById('profileSuccess');
+            successMsg.textContent = '✓ Password reset email sent to ' + email + '. Check your inbox!';
+            successMsg.style.display = 'block';
+
+            console.log('✓ Password reset email sent successfully to:', email);
+
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Reset Password';
+            }
+
+            setTimeout(() => {
+                successMsg.style.display = 'none';
+            }, 5000);
+        }
+
+        function clearAllData() {
+            if (confirm('Are you sure? This will delete all your study plans and task progress. This action cannot be undone.')) {
+                localStorage.removeItem('studyPlan');
+                localStorage.removeItem('taskStatus');
+                localStorage.removeItem('loadedPlanId');
+                alert('All local data has been cleared.');
+                location.reload();
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Step 1: Wait for the shared auth initialization to finish
+                console.log('Profile: Waiting for auth initialization...');
+                await ensureAuthInitialized();
+
+                // Step 2: Initialize page auth UI
+                console.log('Profile: Initializing page auth UI...');
+                initializePageAuthUI();
+                
+                // Step 3: Load profile data
+                console.log('Profile: Loading profile data...');
+                await loadProfileData();
+                console.log('Profile: Initialization complete');
+                
+            } catch (e) {
+                console.warn('Profile: Initialization error:', e);
+                window.authConfig = window.authConfig || { enabled: false };
+                await loadProfileData();
+            }
+        });
+        
+        // Listen for auth state changes from other tabs
+        window.addEventListener('authStateChanged', async (event) => {
+            console.log('Profile: Auth state changed from another tab', event.detail);
+            await loadProfileData();
+            initializePageAuthUI();
+        });
+    </script>
+</body>
+</html>

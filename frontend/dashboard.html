@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - StudyFlow</title>
     <link rel="stylesheet" href="/static/style.css">
-    <script src="/static/auth.js" defer></script>
+    <script defer src="/static/auth.js"></script>
     <style>
         .assistant-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
         .ast-card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; cursor: pointer; text-decoration: none; color: inherit; transition: border 0.2s;}
@@ -156,10 +156,11 @@
         <div class="logo">StudyFlow</div>
         <div class="subtitle">AI Smart Planner</div>
         <div class="nav-links">
-            <a href="/" class="active">Dashboard</a>
+            <a href="/dashboard" class="active">Dashboard</a>
             <a href="/planner">Planner</a>
+            <a href="/resources">Resources</a>
             <a href="/tasks">All Tasks</a>
-            <a href="/setup">Setup Goals</a>
+            <a href="/profile">Profile</a>
         </div>
     </div>
 
@@ -167,11 +168,12 @@
         <div class="topbar">
             <div>
                 <div class="greeting">Welcome back</div>
-                <div class="name" id="userNameLabel">Guest</div>
+                <div class="name" id="userDisplayName">Guest</div>
             </div>
             <div class="actions">
-                <div class="auth-status" id="authStatus">Checking sign-in...</div>
-                <button class="btn-outline" id="authActionBtn" type="button">Sign in</button>
+                <button class="btn-outline" onclick="window.location.href='/profile'">Profile</button>
+                <button class="btn-icon">☾</button>
+                <button class="btn-dark" onclick="logoutWithAuth0()">Logout</button>
             </div>
         </div>
 
@@ -245,6 +247,13 @@
                         <!-- Populated by JS -->
                     </div>
                     
+                    <div id="missedTasksSection" style="display: none; margin-top: 20px; background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px;">
+                        <h3 style="color: #991b1b; margin: 0 0 12px 0; font-size: 14px; font-weight: 600;">⚠️ Missed Tasks</h3>
+                        <div class="task-list" id="missedTasksList">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    
                     <div style="display: flex; gap: 8px; margin-top: 20px;">
                         <a href="/planner" style="flex: 1; text-align: center; color:var(--primary); text-decoration:none; font-size:14px; font-weight:600; padding: 8px; background: var(--bg-light); border-radius: 6px; border: 1px solid var(--border);">📅 View Calendar</a>
                         <a href="/tasks" style="flex: 1; text-align: center; color:var(--primary); text-decoration:none; font-size:14px; font-weight:600; padding: 8px; background: var(--bg-light); border-radius: 6px; border: 1px solid var(--border);">📋 All Tasks</a>
@@ -258,7 +267,7 @@
                     <p class="panel-subtitle" style="margin-bottom: 24px;">Pick a focus, we will open a dedicated workspace to capture details.</p>
 
                     <div class="assistant-cards">
-                        <a href="/setup" class="ast-card">
+                        <a href="/long-term-goal" class="ast-card">
                             <h4>🎯 Long-term mission</h4>
                             <p>Calibrate study hours, subjects, and pacing.</p>
                         </a>
@@ -273,13 +282,175 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Load data
+        // Initialize auth and update UI
+        async function initializeDashboard() {
+            try {
+                // Load auth config
+                window.authConfig = await loadAuthConfig();
+                
+                // Update user display name
+                const token = await getAccessToken();
+                if (token) {
+                    try {
+                        // Fetch stored display name from backend
+                        const response = await fetch('/api/me', {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const userData = await response.json();
+                            if (userData.user && userData.user.email) {
+                                // Use stored displayName if available, otherwise use Auth0 name
+                                const displayName = userData.user.displayName || getDisplayName(userData.user);
+                                document.getElementById('userDisplayName').textContent = displayName;
+                                localStorage.setItem('userDisplayName', displayName);
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Error fetching user from backend:', e);
+                    }
+                    
+                    // Fallback to token data
+                    const decoded = parseJwt(token);
+                    const displayName = getDisplayName(decoded);
+                    document.getElementById('userDisplayName').textContent = displayName;
+                    localStorage.setItem('userDisplayName', displayName);
+                } else {
+                    // Load from localStorage if available
+                    const savedName = localStorage.getItem('userDisplayName');
+                    if (savedName) {
+                        document.getElementById('userDisplayName').textContent = savedName;
+                    }
+                }
+            } catch (e) {
+                console.warn('Error initializing dashboard auth:', e);
+                const savedName = localStorage.getItem('userDisplayName');
+                if (savedName) {
+                    document.getElementById('userDisplayName').textContent = savedName;
+                }
+            }
+        }
+
+        // Initialize auth and ensure it completes before loading dashboard data
+        async function initAndLoad() {
+            try {
+                // Ensure auth is initialized
+                await ensureAuthInitialized();
+                console.log('[Dashboard] Auth initialized, loading data');
+                await loadDashboardData();
+            } catch (e) {
+                console.error('[Dashboard] Error during init:', e);
+                // Still try to load from localStorage as fallback
+                loadDashboardDataFromLocalStorage();
+            }
+        }
+        
+        initAndLoad();
+        
+        // Listen for auth state changes from other tabs
+        window.addEventListener('authStateChanged', async (event) => {
+            console.log('Dashboard: Auth state changed from another tab', event.detail);
+            await ensureAuthInitialized();
+            loadDashboardData();
+        });
+
+        async function loadDashboardData() {
+            // First, try to load from database if authenticated
+            const token = await getAccessToken();
+            console.log('[Dashboard] Token available:', !!token);
+            
+            if (token) {
+                try {
+                    console.log('[Dashboard] Loading study session from database...');
+                    const response = await authFetch('/api/load-study-session');
+                    if (response.ok) {
+                        const dbData = await response.json();
+                        if (dbData.status === 'success' && dbData.studyPlan) {
+                            console.log('[Dashboard] ✓ Study session loaded from DB');
+                            localStorage.setItem('studyPlan', JSON.stringify(dbData.studyPlan));
+                            localStorage.setItem('taskStatus', JSON.stringify(dbData.taskStatus || {}));
+                            if (dbData.planType) {
+                                localStorage.setItem('planType', dbData.planType);
+                            }
+                            renderDashboard(dbData.studyPlan, dbData.taskStatus || {}, dbData.planType);
+                            return;
+                        } else {
+                            console.log('[Dashboard] No study session in DB, will load from localStorage');
+                        }
+                    } else {
+                        console.warn('[Dashboard] DB load failed with status:', response.status);
+                    }
+                } catch (e) {
+                    console.warn('[Dashboard] Could not load from DB:', e);
+                }
+            }
+            
+            // Fallback: load from localStorage
+            loadDashboardDataFromLocalStorage();
+        }
+        
+        function loadDashboardDataFromLocalStorage() {
+            console.log('[Dashboard] Loading study plan from localStorage');
             const planStr = localStorage.getItem('studyPlan');
-            let taskStatus = JSON.parse(localStorage.getItem('taskStatus')) || {};
+            const taskStatus = JSON.parse(localStorage.getItem('taskStatus')) || {};
+            const planType = localStorage.getItem('planType');
+            
+            if (planStr) {
+                try {
+                    renderDashboard(JSON.parse(planStr), taskStatus, planType);
+                } catch (e) {
+                    console.error('[Dashboard] Error parsing plan:', e);
+                }
+            } else {
+                console.log('[Dashboard] No study plan found, showing empty state');
+                renderDashboard({}, {}, null);
+            }
+        }
+        
+        function renderDashboard(planData, taskStatus, planType) {
+            console.log('[Dashboard] Rendering dashboard with plan type:', planType, 'Tasks:', Object.keys(taskStatus || {}).length);
+            
+            // Ensure taskStatus is defined
+            if (!taskStatus) taskStatus = {};
+            
+            // Load data
+            const planStr = JSON.stringify(planData);
+            const storedPlanType = planType;
             
             const todayStr = new Date().toISOString().split('T')[0];
             const displayOptions = { weekday: 'long', month: 'short', day: 'numeric' };
+            
+            // Get plan type from parameter, fallback to inference if not set
+            let finalPlanType = 'Exam Sprint'; // default
+            if (storedPlanType) {
+                finalPlanType = storedPlanType === 'longterm' ? 'Long-term' : 'Exam Sprint';
+            } else if (planStr) {
+                // Fallback: detect from plan structure if metadata not stored
+                try {
+                    const planData = JSON.parse(planStr);
+                    if (planData.phases) {
+                        planType = 'Long-term';
+                    }
+                } catch(e) {
+                    console.error('Error detecting plan type:', e);
+                }
+            }
+            
+            // Update the Daily Goals header with plan type badge
+            const headerDiv = document.querySelector('.panel-header');
+            let badge = headerDiv.querySelector('.plan-type-badge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'plan-type-badge';
+                badge.style.cssText = 'font-size: 12px; padding: 4px 8px; border-radius: 4px; background: var(--primary-light); color: var(--primary); font-weight: 600; margin-left: 8px;';
+                headerDiv.querySelector('div:first-child').appendChild(badge);
+            }
+            badge.textContent = planType === 'Long-term' ? '🎯 Long-term' : '📚 Exam Sprint';
+            
             document.getElementById('todayDateLabel').innerText = new Date().toLocaleDateString(undefined, displayOptions);
 
             // Generate heatmap data
@@ -302,9 +473,19 @@
                 // Count tasks from plan
                 if (planStr) {
                     try {
-                        const planData = JSON.parse(planStr);
+                        let planData = JSON.parse(planStr);
+                        
+                        // Extract plan from long-term structure if needed
+                        if (planData.plan && typeof planData.plan === 'object' && !Array.isArray(planData.plan)) {
+                            console.log('[Dashboard] Long-term plan detected in heatmap, extracting from .plan property');
+                            planData = planData.plan;
+                        }
+                        
                         Object.entries(planData).forEach(([dateStr, tasks]) => {
-                            if (data[dateStr] && Array.isArray(tasks)) {
+                            // Skip non-date keys and non-array values
+                            if (!dateStr.includes('-') || !Array.isArray(tasks)) return;
+                            
+                            if (data[dateStr]) {
                                 data[dateStr].total = tasks.length;
                                 tasks.forEach((t, idx) => {
                                     const id = `${dateStr}_${t.subject}_${idx}`;
@@ -407,17 +588,43 @@
 
             let todaysTasks = [];
             let allTasksInPlan = [];
+            let missedTasks = [];
             
             if (planStr) {
                 try {
-                    const planData = JSON.parse(planStr);
+                    let planData = JSON.parse(planStr);
+                    
+                    // Extract plan from long-term structure if needed
+                    if (planData.plan && typeof planData.plan === 'object' && !Array.isArray(planData.plan)) {
+                        console.log('[Dashboard] Long-term plan detected, extracting from .plan property');
+                        planData = planData.plan;
+                    }
+                    
+                    // Find missed tasks (scheduled for dates before today, not completed)
+                    Object.entries(planData).forEach(([date, tasks]) => {
+                        // Skip non-date keys (like _planType, planType, etc.)
+                        if (!date.includes('-') || !Array.isArray(tasks)) return;
+                        
+                        if (date < todayStr) {
+                            tasks.forEach((t, idx) => {
+                                const taskId = `${date}_${t.subject}_${idx}`;
+                                if (!taskStatus[taskId]) { // not completed
+                                    missedTasks.push({ ...t, date, taskId });
+                                }
+                            });
+                        }
+                    });
+                    
                     if (planData[todayStr]) {
                         todaysTasks = planData[todayStr];
                     } else {
                         // If no tasks for today, show upcoming tasks instead
-                        const sortedDates = Object.keys(planData).sort();
+                        const sortedDates = Object.keys(planData)
+                            .filter(key => key.includes('-')) // Only date keys (YYYY-MM-DD format)
+                            .sort();
+                        
                         for (let date of sortedDates) {
-                            if (date >= todayStr) {
+                            if (date >= todayStr && Array.isArray(planData[date])) {
                                 todaysTasks = planData[date];
                                 const nextDate = new Date(date);
                                 const nextDateDisplay = nextDate.toLocaleDateString(undefined, displayOptions);
@@ -428,9 +635,13 @@
                     }
                     
                     // Collect all tasks for debugging
-                    Object.values(planData).forEach(dayTasks => {
-                        if (Array.isArray(dayTasks)) allTasksInPlan.push(...dayTasks);
+                    Object.entries(planData).forEach(([date, dayTasks]) => {
+                        // Skip non-date keys
+                        if (!date.includes('-') || !Array.isArray(dayTasks)) return;
+                        allTasksInPlan.push(...dayTasks);
                     });
+                    
+                    console.log('[Dashboard] Total tasks in plan:', allTasksInPlan.length, 'Today tasks:', todaysTasks.length);
                 } catch(e) {
                     console.error('Error parsing study plan:', e);
                 }
@@ -479,18 +690,104 @@
 
                 progressText.innerText = `${completedCount}/${todaysTasks.length}`;
                 progressFill.style.width = `${(completedCount / todaysTasks.length) * 100}%`;
+                
+                // Render missed tasks
+                renderMissedTasks();
+            }
+            
+            function renderMissedTasks() {
+                const missedSection = document.getElementById('missedTasksSection');
+                const missedList = document.getElementById('missedTasksList');
+                
+                if (missedTasks.length === 0) {
+                    missedSection.style.display = 'none';
+                    return;
+                }
+                
+                missedSection.style.display = 'block';
+                missedList.innerHTML = '';
+                
+                missedTasks.forEach((t) => {
+                    const card = document.createElement('div');
+                    card.className = 'task-card';
+                    card.style.cssText = 'opacity: 0.75; border-left: 3px solid #dc2626;';
+                    card.innerHTML = `
+                        <div class="task-main">
+                            <div class="task-checkbox-custom" onclick="toggleDashboardTask('${t.taskId}')"></div>
+                            <div>
+                                <h3 class="task-title">${t.task}</h3>
+                                <div class="task-meta">${t.subject} • Was due: ${t.date}</div>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="task-tag" style="background: #dc2626; color: white;">Missed</span>
+                        </div>
+                    `;
+                    missedList.appendChild(card);
+                });
             }
 
-            window.toggleDashboardTask = function(id) {
+            window.toggleDashboardTask = async function(id) {
                 taskStatus[id] = !taskStatus[id];
                 localStorage.setItem('taskStatus', JSON.stringify(taskStatus));
+                
+                // Save to database if authenticated
+                const token = await getAccessToken();
+                if (token) {
+                    try {
+                        const response = await authFetch('/api/save-study-session', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                studyPlan: JSON.parse(planStr),
+                                taskStatus: taskStatus,
+                                planType: localStorage.getItem('planType')
+                            })
+                        });
+                        if (response.ok) {
+                            console.log('[Dashboard] Task status synced to DB');
+                        }
+                    } catch (e) {
+                        console.warn('[Dashboard] Failed to sync task to DB:', e);
+                    }
+                }
+                
+                // Recalculate missed tasks
+                missedTasks = [];
+                if (planStr) {
+                    try {
+                        let planData = JSON.parse(planStr);
+                        
+                        // Extract plan from long-term structure if needed
+                        if (planData.plan && typeof planData.plan === 'object' && !Array.isArray(planData.plan)) {
+                            planData = planData.plan;
+                        }
+                        
+                        Object.entries(planData).forEach(([date, tasks]) => {
+                            // Skip non-date keys
+                            if (!date.includes('-') || !Array.isArray(tasks)) return;
+                            
+                            if (date < todayStr) {
+                                tasks.forEach((t, idx) => {
+                                    const taskId = `${date}_${t.subject}_${idx}`;
+                                    if (!taskStatus[taskId]) {
+                                        missedTasks.push({ ...t, date, taskId });
+                                    }
+                                });
+                            }
+                        });
+                    } catch(e) {
+                        console.error('Error recalculating missed tasks:', e);
+                    }
+                }
+                
                 renderDailyTasks();
                 // Re-render heatmap when task status changes
                 renderHeatmap();
             };
 
             renderDailyTasks();
-        });
+        }
     </script>
 </body>
 </html>

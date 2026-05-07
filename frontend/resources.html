@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning Resources - StudyFlow</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script defer src="/static/auth.js"></script>
+    <style>
+        .goal-badge {
+            display: inline-block;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+        
+        .filter-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-btn {
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            background: white;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            color: var(--text-dark);
+        }
+        
+        .filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .resources-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        @media (max-width: 768px) {
+            .resources-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .resource-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .resource-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .resource-thumbnail {
+            width: 100%;
+            height: 180px;
+            background: linear-gradient(135deg, var(--primary-light) 0%, rgba(59,130,246,0.1) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-size: 32px;
+        }
+        
+        .resource-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .resource-thumbnail-fallback {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--primary);
+            opacity: 0.6;
+        }
+        
+        .resource-content {
+            padding: 14px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .resource-type-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            background: var(--bg-light);
+            color: var(--primary);
+            width: fit-content;
+        }
+        
+        .resource-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 6px;
+            line-height: 1.3;
+            flex: 1;
+        }
+        
+        .resource-description {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        
+        .resource-subject {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .resource-button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .resource-button:hover {
+            background: var(--primary-hover);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .loading-skeleton {
+            background: linear-gradient(90deg, var(--bg-light) 25%, rgba(255,255,255,0.2) 50%, var(--bg-light) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .skeleton-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .skeleton-thumbnail {
+            width: 100%;
+            height: 180px;
+            background: var(--bg-light);
+        
+        }
+        
+        .skeleton-content {
+            padding: 14px;
+            flex: 1;
+        }
+        
+        .skeleton-line {
+            height: 12px;
+            background: var(--bg-light);
+            border-radius: 4px;
+            margin-bottom: 8px;
+            
+        }
+        
+        .skeleton-line.full {
+            width: 100%;
+        }
+        
+        .skeleton-line.short {
+            width: 60%;
+        }
+        
+        .refresh-btn {
+            padding: 8px 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .refresh-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .resource-count {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">StudyFlow</div>
+        <div class="subtitle">AI Smart Planner</div>
+        <div class="nav-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/planner">Planner</a>
+            <a href="/resources" class="active">Resources</a>
+            <a href="/tasks">All Tasks</a>
+            <a href="/profile">Profile</a>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="topbar">
+            <div>
+                <div class="greeting">Learning Resources</div>
+                <div class="name" id="goalName">Personalized for your study plan</div>
+            </div>
+            <div class="actions">
+                <button class="btn-dark" onclick="refreshResources()">🔄 Refresh</button>
+            </div>
+        </div>
+
+        <div class="content" style="max-width: 1400px;">
+            <div id="noGoalState" style="display: none;">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📚</div>
+                    <h3>No Study Goal Yet</h3>
+                    <p>Set up your study goal to get personalized learning resources.</p>
+                    <button class="btn-dark" onclick="window.location.href='/long-term-goal'" style="margin-top: 16px;">Set Up Goal</button>
+                </div>
+            </div>
+
+            <div id="contentArea" style="display: none;">
+                <div class="goal-badge" id="goalBadge">📚 Loading goal...</div>
+                
+                <div id="errorContainer"></div>
+                
+                <div class="filter-header">
+                    <div>
+                        <h3 style="margin: 0 0 12px 0; color: var(--text-dark);">Subject Filter</h3>
+                        <div class="filter-row" id="subjectFilters"></div>
+                    </div>
+                    <div class="resource-count" id="resourceCount"></div>
+                </div>
+                
+                <div style="margin-bottom: 16px;">
+                    <h3 style="margin: 0 0 12px 0; color: var(--text-dark);">Resource Type</h3>
+                    <div class="filter-row" id="typeFilters"></div>
+                </div>
+                
+                <div class="resources-grid" id="resourcesGrid">
+                    <!-- Resources populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allResources = [];
+        let filteredResources = [];
+        let currentSubjectFilter = 'all';
+        let currentTypeFilter = 'all';
+        
+        const RESOURCES_CACHE_PREFIX = 'resourcesCache_';
+        const GOAL_CACHE_KEY = 'currentGoalHash';
+        
+        // Ensure authFetch is available (wait for auth.js to load)
+        function getAuthFetch() {
+            return window.authFetch || (async (url, options) => {
+                // Fallback to regular fetch if authFetch not available
+                return fetch(url, options);
+            });
+        }
+        
+        async function initResources() {
+            try {
+                // Load plan from localStorage
+                const planStr = localStorage.getItem('studyPlan');
+                if (!planStr) {
+                    document.getElementById('noGoalState').style.display = 'block';
+                    document.getElementById('contentArea').style.display = 'none';
+                    return;
+                }
+                
+                let planData;
+                try {
+                    planData = JSON.parse(planStr);
+                } catch (e) {
+                    console.error('Error parsing plan:', e);
+                    showError('Invalid study plan data. Please create a new plan.');
+                    return;
+                }
+                
+                // Extract goal and subjects
+                let goal = '';
+                let subjects = [];
+                let level = 'Beginner';
+                
+                // For longterm plans (with 'plan' key)
+                if (planData.plan && planData.goal) {
+                    goal = planData.goal;
+                    level = planData.level || 'Beginner';
+                    // Extract subjects from plan dates
+                    Object.values(planData.plan).forEach(dayTasks => {
+                        if (Array.isArray(dayTasks)) {
+                            dayTasks.forEach(task => {
+                                if (task.subject && !subjects.includes(task.subject)) {
+                                    subjects.push(task.subject);
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    // For exam sprint plans (flat date->tasks mapping)
+                    Object.values(planData).forEach(dayTasks => {
+                        if (Array.isArray(dayTasks)) {
+                            dayTasks.forEach(task => {
+                                if (task && task.subject && !subjects.includes(task.subject)) {
+                                    subjects.push(task.subject);
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                if (!goal && subjects.length > 0) {
+                    goal = `Study Plan: ${subjects.slice(0, 2).join(', ')}`;
+                }
+                
+                if (!goal) {
+                    document.getElementById('noGoalState').style.display = 'block';
+                    document.getElementById('contentArea').style.display = 'none';
+                    return;
+                }
+                
+                document.getElementById('contentArea').style.display = 'block';
+                document.getElementById('noGoalState').style.display = 'none';
+                
+                // Update goal badge
+                document.getElementById('goalBadge').textContent = `🎯 ${goal}`;
+                document.getElementById('goalName').textContent = subjects.length > 0 ? `${subjects.length} subjects` : 'Study plan loaded';
+                
+                // Check cache
+                const goalHash = btoa(goal + JSON.stringify(subjects.sort()));
+                const cached = localStorage.getItem(RESOURCES_CACHE_PREFIX + goalHash);
+                
+                if (cached) {
+                    try {
+                        allResources = JSON.parse(cached);
+                        renderResources();
+                        initializeFilters();
+                        return;
+                    } catch (e) {
+                        console.error('Error loading cached resources:', e);
+                    }
+                }
+                
+                // Show loading state
+                showLoadingState();
+                
+                // Fetch resources from API
+                const authFetch = getAuthFetch();
+                const response = await authFetch('/api/get-resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        goal,
+                        subjects: subjects.join(', '),
+                        level
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch resources');
+                }
+                
+                const data = await response.json();
+                if (data.status !== 'success' || !data.resources) {
+                    throw new Error('Invalid response format');
+                }
+                
+                allResources = data.resources;
+                
+                // Cache the resources
+                localStorage.setItem(RESOURCES_CACHE_PREFIX + goalHash, JSON.stringify(allResources));
+                localStorage.setItem(GOAL_CACHE_KEY, goalHash);
+                
+                renderResources();
+                initializeFilters();
+                
+            } catch (err) {
+                console.error('Error initializing resources:', err);
+                showError(`Could not load resources. ${err.message || 'Please try again.'}`);
+            }
+        }
+        
+        function initializeFilters() {
+            // Get unique subjects
+            const subjects = [...new Set(allResources.map(r => r.subject))].sort();
+            const types = [...new Set(allResources.map(r => r.type))].sort();
+            
+            // Render subject filters
+            const subjectFilters = document.getElementById('subjectFilters');
+            subjectFilters.innerHTML = '';
+            
+            const allBtn = document.createElement('button');
+            allBtn.className = 'filter-btn active';
+            allBtn.textContent = 'All Subjects';
+            allBtn.onclick = () => setSubjectFilter('all', allBtn);
+            subjectFilters.appendChild(allBtn);
+            
+            subjects.forEach(subject => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn';
+                btn.textContent = subject;
+                btn.onclick = () => setSubjectFilter(subject, btn);
+                subjectFilters.appendChild(btn);
+            });
+            
+            // Render type filters
+            const typeFilters = document.getElementById('typeFilters');
+            typeFilters.innerHTML = '';
+            
+            const allTypeBtn = document.createElement('button');
+            allTypeBtn.className = 'filter-btn active';
+            allTypeBtn.textContent = 'All Types';
+            allTypeBtn.onclick = () => setTypeFilter('all', allTypeBtn);
+            typeFilters.appendChild(allTypeBtn);
+            
+            const typeEmojis = {
+                'YouTube': '📺',
+                'Website': '🌐',
+                'Documentation': '📄',
+                'Tool': '🛠️'
+            };
+            
+            types.forEach(type => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn';
+                btn.textContent = `${typeEmojis[type] || '📌'} ${type}`;
+                btn.onclick = () => setTypeFilter(type, btn);
+                typeFilters.appendChild(btn);
+            });
+            
+            applyFilters();
+        }
+        
+        function setSubjectFilter(subject, button) {
+            currentSubjectFilter = subject;
+            document.querySelectorAll('#subjectFilters .filter-btn').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            applyFilters();
+        }
+        
+        function setTypeFilter(type, button) {
+            currentTypeFilter = type;
+            document.querySelectorAll('#typeFilters .filter-btn').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            applyFilters();
+        }
+        
+        function applyFilters() {
+            filteredResources = allResources.filter(r => {
+                const subjectMatch = currentSubjectFilter === 'all' || r.subject === currentSubjectFilter;
+                const typeMatch = currentTypeFilter === 'all' || r.type === currentTypeFilter;
+                return subjectMatch && typeMatch;
+            });
+            
+            renderResources();
+        }
+        
+        function renderResources() {
+            const grid = document.getElementById('resourcesGrid');
+            
+            if (filteredResources.length === 0) {
+                grid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>No resources match your filters.</p></div>';
+                document.getElementById('resourceCount').textContent = 'Showing 0 resources';
+                return;
+            }
+            
+            grid.innerHTML = filteredResources.map(resource => createResourceCard(resource)).join('');
+            
+            const subject = currentSubjectFilter === 'all' ? '' : ` for ${currentSubjectFilter}`;
+            document.getElementById('resourceCount').textContent = `Showing ${filteredResources.length} resource${filteredResources.length !== 1 ? 's' : ''}${subject}`;
+        }
+        
+        function createResourceCard(resource) {
+            const getThumbnail = (res) => {
+                if (res.type === 'YouTube') {
+                    if (res.thumbnail) return res.thumbnail;
+                    const videoId = extractYouTubeId(res.url);
+                    if (videoId) return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                }
+                return null;
+            };
+            
+            const thumbnail = getThumbnail(resource);
+            const domain = extractDomain(resource.url);
+            
+            // Get icon and color for resource type
+            const typeIcons = {
+                'YouTube': { emoji: '▶️', color: '#FF0000', icon: '📺' },
+                'Website': { emoji: '🌐', color: '#4FA3FF', icon: '🌐' },
+                'Documentation': { emoji: '📖', color: '#7C3AED', icon: '📄' },
+                'Tool': { emoji: '⚙️', color: '#06B6D4', icon: '🛠️' }
+            };
+            
+            const typeInfo = typeIcons[resource.type] || { emoji: '📌', color: '#6B7280', icon: '📌' };
+            
+            // Subject color map
+            const subjectColors = {
+                'Math': { bg: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E72 100%)', icon: '📐' },
+                'Science': { bg: 'linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%)', icon: '🔬' },
+                'Physics': { bg: 'linear-gradient(135deg, #A8EDEA 0%, #FED6E3 100%)', icon: '⚛️' },
+                'Chemistry': { bg: 'linear-gradient(135deg, #FF9A56 0%, #FF6B6B 100%)', icon: '🧪' },
+                'Biology': { bg: 'linear-gradient(135deg, #56AB2F 0%, #A8E063 100%)', icon: '🔬' },
+                'History': { bg: 'linear-gradient(135deg, #8B6F47 0%, #D4AF37 100%)', icon: '📜' },
+                'English': { bg: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', icon: '📚' },
+                'Literature': { bg: 'linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)', icon: '✍️' },
+                'Geography': { bg: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', icon: '🗺️' },
+                'Economics': { bg: 'linear-gradient(135deg, #DC2626 0%, #DC2626 100%)', icon: '💹' },
+                'Computer Science': { bg: 'linear-gradient(135deg, #1F2937 0%, #374151 100%)', icon: '💻' },
+                'Programming': { bg: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', icon: '💾' },
+                'AQA': { bg: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)', icon: '📋' },
+                'Maths': { bg: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E72 100%)', icon: '📐' },
+            };
+            
+            // Find color for this subject
+            let subjectInfo = null;
+            for (const [key, value] of Object.entries(subjectColors)) {
+                if (resource.subject.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(resource.subject.toLowerCase())) {
+                    subjectInfo = value;
+                    break;
+                }
+            }
+            
+            if (!subjectInfo) {
+                const colors = Object.values(subjectColors);
+                subjectInfo = colors[Math.abs(resource.subject.charCodeAt(0)) % colors.length];
+            }
+            
+            // Build thumbnail HTML
+            let thumbnailHtml = '';
+            if (thumbnail) {
+                thumbnailHtml = `<img src="${thumbnail}" alt="${resource.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="width:100%; height:100%; object-fit:cover;">`;
+            }
+            
+            const fallbackChar = resource.subject.charAt(0).toUpperCase();
+            const fallbackIcon = subjectInfo.icon;
+            
+            return `
+                <div class="resource-card">
+                    <div class="resource-thumbnail" style="background: ${subjectInfo.bg}; display: flex; align-items: center; justify-content: center; font-size: 64px; position: relative; overflow: hidden;">
+                        ${thumbnailHtml}
+                        <div class="resource-thumbnail-fallback" style="${thumbnail ? 'display:none;' : ''} flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+                            <span style="font-size: 56px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">${fallbackIcon}</span>
+                        </div>
+                        <span class="resource-type-corner" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.4); color: white; padding: 4px 8px; border-radius: 4px; font-size: 18px; font-weight: bold;">${typeInfo.emoji}</span>
+                    </div>
+                    <div class="resource-content">
+                        <span class="resource-type-badge" style="background: ${typeInfo.color}22; color: ${typeInfo.color};">${resource.type}</span>
+                        <h3 class="resource-title">${escapeHtml(resource.title)}</h3>
+                        <p class="resource-description">${escapeHtml(resource.description)}</p>
+                        <p class="resource-subject">${fallbackIcon} ${escapeHtml(resource.subject)}</p>
+                        <a href="${resource.url}" target="_blank" rel="noopener noreferrer" class="resource-button">Open Resource →</a>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function extractYouTubeId(url) {
+            try {
+                if (url.includes('youtube.com/watch')) {
+                    const match = url.match(/[?&]v=([^&]*)/);
+                    return match ? match[1] : null;
+                } else if (url.includes('youtube.com/playlist')) {
+                    return null; // Playlists don't have single video thumbnails
+                } else if (url.includes('youtu.be')) {
+                    const match = url.match(/youtu\.be\/([^?]*)/);
+                    return match ? match[1] : null;
+                }
+            } catch (e) {
+                console.error('Error extracting YouTube ID:', e);
+            }
+            return null;
+        }
+        
+        function extractDomain(url) {
+            try {
+                const urlObj = new URL(url);
+                return urlObj.hostname;
+            } catch (e) {
+                return 'resource';
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function showLoadingState() {
+            const grid = document.getElementById('resourcesGrid');
+            grid.innerHTML = Array(6).fill(0).map(() => `
+                <div class="skeleton-card">
+                    <div class="skeleton-thumbnail loading-skeleton"></div>
+                    <div class="skeleton-content">
+                        <div class="skeleton-line short" style="margin-bottom: 12px;"></div>
+                        <div class="skeleton-line full"></div>
+                        <div class="skeleton-line full"></div>
+                        <div class="skeleton-line short" style="margin: 8px 0;"></div>
+                        <div class="skeleton-line full" style="margin-top: 8px;"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function showError(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.innerHTML = `
+                <div class="error-message">
+                    <span>❌ ${escapeHtml(message)}</span>
+                    <button class="refresh-btn" onclick="initResources()" style="margin-top: 0;">Retry</button>
+                </div>
+            `;
+        }
+        
+        function refreshResources() {
+            // Clear cache and reload
+            const goalHash = localStorage.getItem(GOAL_CACHE_KEY);
+            if (goalHash) {
+                localStorage.removeItem(RESOURCES_CACHE_PREFIX + goalHash);
+            }
+            allResources = [];
+            filteredResources = [];
+            initResources();
+        }
+        
+        // Initialize on page load
+        initResources();
+    </script>
+</body>
+</html>
