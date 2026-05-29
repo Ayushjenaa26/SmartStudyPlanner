@@ -275,7 +275,8 @@
         <div class="nav-links">
             <a href="/dashboard">Dashboard</a>
             <a href="/planner">Planner</a>
-            <a href="/resources">Resources</a>
+            <a href="/link-library">Link Library</a>
+            <a href="/mindmap">Mind Maps</a>
             <a href="/tasks">All Tasks</a>
             <a href="/profile" class="active">Profile</a>
         </div>
@@ -311,30 +312,294 @@
                 <div id="profileSuccess" class="success-message"></div>
             </div>
 
+            <!-- Analysis Dashboard Section -->
+            <div class="settings-section">
+                <div class="settings-heading">📊 Performance Analysis</div>
+                <div class="settings-subtitle">Track your study goals achievement and progress metrics.</div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
+                    <!-- Goals Set -->
+                    <div style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); border: 1px solid #7dd3fc; border-radius: 8px; padding: 20px; text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #0369a1; margin-bottom: 8px;" id="goalsSetCount">0</div>
+                        <div style="font-size: 14px; color: #0c4a6e; font-weight: 500;">Goals Set</div>
+                    </div>
+                    
+                    <!-- Goals Achieved -->
+                    <div style="background: linear-gradient(135deg, #dcfce7, #bbf7d0); border: 1px solid #4ade80; border-radius: 8px; padding: 20px; text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #16a34a; margin-bottom: 8px;" id="goalsAchievedCount">0</div>
+                        <div style="font-size: 14px; color: #15803d; font-weight: 500;">Goals Achieved</div>
+                    </div>
+                    
+                    <!-- Achievement Rate -->
+                    <div style="background: linear-gradient(135deg, #fef3c7, #fed7aa); border: 1px solid #fbbf24; border-radius: 8px; padding: 20px; text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #d97706; margin-bottom: 8px;" id="achievementRatePercent">0%</div>
+                        <div style="font-size: 14px; color: #92400e; font-weight: 500;">Achievement Rate</div>
+                    </div>
+                    
+                    <!-- Total Tasks -->
+                    <div style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); border: 1px solid #d8b4fe; border-radius: 8px; padding: 20px; text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #9333ea; margin-bottom: 8px;" id="totalTasksCount">0</div>
+                        <div style="font-size: 14px; color: #581c87; font-weight: 500;">Total Tasks</div>
+                    </div>
+                    
+                    <!-- Tasks Completed -->
+                    <div style="background: linear-gradient(135deg, #fee2e2, #fecaca); border: 1px solid #fca5a5; border-radius: 8px; padding: 20px; text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #dc2626; margin-bottom: 8px;" id="tasksCompletedCount">0</div>
+                        <div style="font-size: 14px; color: #7f1d1d; font-weight: 500;">Tasks Completed</div>
+                    </div>
+                    
+                    <!-- Completion Rate -->
+                    <div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border: 1px solid #93c5fd; border-radius: 8px; padding: 20px; text-align: center;">
+                        <div style="font-size: 32px; font-weight: 700; color: #2563eb; margin-bottom: 8px;" id="completionRatePercent">0%</div>
+                        <div style="font-size: 14px; color: #1e40af; font-weight: 500;">Task Completion Rate</div>
+                    </div>
+                </div>
+                
+                <!-- Detailed Analysis -->
+                <div style="background: var(--bg-light); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                    <h3 style="margin: 0 0 12px 0; color: var(--text-dark); font-size: 14px; font-weight: 600;">📈 Detailed Metrics</h3>
+                    <div id="detailedAnalysis" style="display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
+                            <span style="color: var(--text-muted);">Subjects/Categories:</span>
+                            <span style="font-weight: 600; color: var(--text-dark);" id="subjectsCount">0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
+                            <span style="color: var(--text-muted);">Study Days:</span>
+                            <span style="font-weight: 600; color: var(--text-dark);" id="studyDaysCount">0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
+                            <span style="color: var(--text-muted);">Longest Streak:</span>
+                            <span style="font-weight: 600; color: var(--text-dark);" id="longestStreak">0 days</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                            <span style="color: var(--text-muted);">Last Activity:</span>
+                            <span style="font-weight: 600; color: var(--text-dark);" id="lastActivity">Never</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tips Section -->
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px;">
+                    <h3 style="margin: 0 0 12px 0; color: #1e40af; font-size: 14px; font-weight: 600;">💡 Performance Tips</h3>
+                    <ul style="margin: 0; padding-left: 20px; color: #1e40af; font-size: 13px; line-height: 1.6;">
+                        <li>Set realistic daily goals to maintain consistency</li>
+                        <li>Track your completion rate to identify patterns</li>
+                        <li>Use the heatmap on your dashboard to visualize progress</li>
+                        <li>Review missed tasks and adjust your schedule accordingly</li>
+                        <li>Focus on building a consistent study streak</li>
+                    </ul>
+                </div>
+            </div>
 
         </div>
     </div>
 
     <script>
+        // Add analysis dashboard update function
+        async function updateAnalysisDashboard() {
+            try {
+                // Get study plan from localStorage
+                const planStr = localStorage.getItem('studyPlan');
+                const taskStatus = JSON.parse(localStorage.getItem('taskStatus')) || {};
+                
+                let planData = {};
+                let allTasks = [];
+                let completedTasks = [];
+                let activeGoalTasks = [];  // Tasks from today onwards (active/current goals)
+                let completedActiveGoalTasks = [];
+                let subjects = new Set();
+                let studyDates = new Set();
+                let activeGoalDates = new Set();  // Dates from today onwards
+                let lastActivityDate = null;
+                
+                // Get today's date in YYYY-MM-DD format
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+                
+                if (planStr) {
+                    try {
+                        planData = JSON.parse(planStr);
+                        
+                        // Extract from long-term structure if needed
+                        if (planData.plan && typeof planData.plan === 'object' && !Array.isArray(planData.plan)) {
+                            planData = planData.plan;
+                        }
+                        
+                        // Process all dates and tasks
+                        Object.entries(planData).forEach(([dateStr, tasks]) => {
+                            // Skip non-date keys
+                            if (!dateStr.includes('-') || !Array.isArray(tasks)) return;
+                            
+                            studyDates.add(dateStr);
+                            
+                            // Check if this date is today or in the future (active goal)
+                            const isActiveGoal = dateStr >= todayStr;
+                            if (isActiveGoal) {
+                                activeGoalDates.add(dateStr);
+                            }
+                            
+                            tasks.forEach((task, idx) => {
+                                const taskId = `${dateStr}_${task.subject}_${idx}`;
+                                subjects.add(task.subject);
+                                allTasks.push({ ...task, dateStr, taskId });
+                                
+                                // Track active goal tasks
+                                if (isActiveGoal) {
+                                    activeGoalTasks.push({ ...task, dateStr, taskId });
+                                }
+                                
+                                if (taskStatus[taskId]) {
+                                    completedTasks.push({ ...task, dateStr, taskId });
+                                    if (isActiveGoal) {
+                                        completedActiveGoalTasks.push({ ...task, dateStr, taskId });
+                                    }
+                                    lastActivityDate = new Date(dateStr);
+                                }
+                            });
+                        });
+                    } catch (e) {
+                        console.error('Error parsing plan for analysis:', e);
+                    }
+                }
+                
+                // Calculate metrics for ACTIVE GOALS ONLY (today onwards)
+                const totalTasks = activeGoalTasks.length;
+                const completedCount = completedActiveGoalTasks.length;
+                const completionRate = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+                
+                // Calculate goals (distinct dates with tasks from today onwards)
+                const goalsSet = activeGoalDates.size;
+                let goalsAchieved = 0;
+                
+                // Count how many active goal days had ALL tasks completed
+                activeGoalDates.forEach(dateStr => {
+                    const dayTasks = activeGoalTasks.filter(t => t.dateStr === dateStr);
+                    const completedDayTasks = completedActiveGoalTasks.filter(t => t.dateStr === dateStr);
+                    if (dayTasks.length > 0 && dayTasks.length === completedDayTasks.length) {
+                        goalsAchieved++;
+                    }
+                });
+                
+                const achievementRate = goalsSet > 0 ? Math.round((goalsAchieved / goalsSet) * 100) : 0;
+                
+                // Calculate longest streak (from all historical data for context)
+                const sortedDates = Array.from(studyDates).sort();
+                let longestStreak = 0;
+                let currentStreak = 0;
+                let lastDate = null;
+                
+                sortedDates.forEach(dateStr => {
+                    const currentDate = new Date(dateStr);
+                    const dayTasks = allTasks.filter(t => t.dateStr === dateStr);
+                    const completedDayTasks = completedTasks.filter(t => t.dateStr === dateStr);
+                    
+                    // Consider a day completed if all tasks are done
+                    const dayCompleted = dayTasks.length > 0 && dayTasks.length === completedDayTasks.length;
+                    
+                    if (dayCompleted) {
+                        if (lastDate) {
+                            const dayDiff = (currentDate - lastDate) / (1000 * 60 * 60 * 24);
+                            if (dayDiff === 1) {
+                                currentStreak++;
+                            } else {
+                                longestStreak = Math.max(longestStreak, currentStreak);
+                                currentStreak = 1;
+                            }
+                        } else {
+                            currentStreak = 1;
+                        }
+                        lastDate = currentDate;
+                    } else {
+                        if (lastDate) {
+                            longestStreak = Math.max(longestStreak, currentStreak);
+                            currentStreak = 0;
+                            lastDate = null;
+                        }
+                    }
+                });
+                longestStreak = Math.max(longestStreak, currentStreak);
+                
+                // Get last activity date formatted
+                let lastActivityText = 'Never';
+                if (lastActivityDate) {
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    
+                    if (lastActivityDate.toDateString() === today.toDateString()) {
+                        lastActivityText = 'Today';
+                    } else if (lastActivityDate.toDateString() === yesterday.toDateString()) {
+                        lastActivityText = 'Yesterday';
+                    } else {
+                        lastActivityText = lastActivityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }
+                }
+                
+                // Update DOM - Now showing only active goals (today onwards)
+                document.getElementById('goalsSetCount').textContent = goalsSet;
+                document.getElementById('goalsAchievedCount').textContent = goalsAchieved;
+                document.getElementById('achievementRatePercent').textContent = achievementRate + '%';
+                document.getElementById('totalTasksCount').textContent = totalTasks;
+                document.getElementById('tasksCompletedCount').textContent = completedCount;
+                document.getElementById('completionRatePercent').textContent = completionRate + '%';
+                document.getElementById('subjectsCount').textContent = subjects.size;
+                document.getElementById('studyDaysCount').textContent = activeGoalDates.size;
+                document.getElementById('longestStreak').textContent = longestStreak + ' days';
+                document.getElementById('lastActivity').textContent = lastActivityText;
+                
+            } catch (e) {
+                console.error('Error updating analysis dashboard:', e);
+            }
+        }
+        
+        // Initialize analysis on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateAnalysisDashboard();
+        });
+        
+        // Update analysis when storage changes
+        window.addEventListener('storage', () => {
+            updateAnalysisDashboard();
+        });
+        
         let currentUserEmail = null;
         let currentToken = null;
+
+        // Helper function to safely wait for auth functions to be available
+        async function waitForAuthFunctions(timeout = 5000) {
+            const startTime = Date.now();
+            while (Date.now() - startTime < timeout) {
+                if (typeof ensureAuthInitialized !== 'undefined' && typeof getAccessToken !== 'undefined') {
+                    return true;
+                }
+                await new Promise(r => setTimeout(r, 100));
+            }
+            console.warn('Auth functions not available after timeout, proceeding anyway');
+            return false;
+        }
 
         async function loadProfileData() {
             try {
                 // Load authentication status using getAccessToken from auth.js
                 console.log('[Profile] loadProfileData starting...');
                 
-                // CRITICAL: Ensure auth is fully initialized BEFORE getting token
-                await ensureAuthInitialized();
-                console.log('[Profile] Auth initialized');
+                // Wait for auth.js to load
+                await waitForAuthFunctions();
                 
-                const token = await getAccessToken();
+                // CRITICAL: Ensure auth is fully initialized BEFORE getting token
+                if (typeof ensureAuthInitialized !== 'undefined') {
+                    await ensureAuthInitialized();
+                    console.log('[Profile] Auth initialized');
+                } else {
+                    console.warn('[Profile] ensureAuthInitialized not available');
+                }
+                
+                const token = typeof getAccessToken !== 'undefined' ? await getAccessToken() : null;
                 currentToken = token;
                 
                 console.log('[Profile] Token available:', !!token);
                 console.log('[Profile] Token in localStorage:', !!localStorage.getItem('smartstudyplanner_auth0_id_token'));
                 
-                if (token) {
+                if (token && typeof parseJwt !== 'undefined') {
                     const decoded = parseJwt(token);
                     currentUserEmail = decoded?.email;
                     console.log('[Profile] Email from token:', currentUserEmail);
@@ -369,7 +634,7 @@
                                 const email = userData.user.email;
                                 
                                 // Try to get stored displayName, fall back to Auth0 name
-                                let displayName = userData.user.displayName || userData.user.name || getDisplayName(userData.user);
+                                let displayName = userData.user.displayName || userData.user.name || (typeof getDisplayName !== 'undefined' ? getDisplayName(userData.user) : userData.user.email);
                                 
                                 document.getElementById('displayNameInput').value = displayName;
                                 document.getElementById('displayNameInput').placeholder = 'Enter your name';
@@ -385,16 +650,18 @@
                         
                         // Fallback: use token data if backend fetch fails or returns guest
                         console.log('Falling back to token data...');
-                        const decoded = parseJwt(token);
-                        const displayName = getDisplayName(decoded);
-                        document.getElementById('displayNameInput').value = displayName;
-                        document.getElementById('displayNameInput').placeholder = 'Enter your name';
-                        localStorage.setItem('userDisplayName', displayName);
-                        console.log('✓ User authenticated (from token):', displayName);
+                        if (typeof parseJwt !== 'undefined' && typeof getDisplayName !== 'undefined') {
+                            const decoded = parseJwt(token);
+                            const displayName = getDisplayName(decoded);
+                            document.getElementById('displayNameInput').value = displayName;
+                            document.getElementById('displayNameInput').placeholder = 'Enter your name';
+                            localStorage.setItem('userDisplayName', displayName);
+                            console.log('✓ User authenticated (from token):', displayName);
+                        }
                     } catch (e) {
                         console.error('Error loading profile:', e);
                         // If it failed but we have a token, maybe there's a backend error. Try falling back to token one last time.
-                        if (token) {
+                        if (token && typeof parseJwt !== 'undefined' && typeof getDisplayName !== 'undefined') {
                             try {
                                 const decoded = parseJwt(token);
                                 document.getElementById('displayNameInput').value = getDisplayName(decoded);
@@ -427,53 +694,24 @@
             try {
                 console.log('[SaveName] Starting save for:', displayName);
                 
+                // Wait for auth.js to load
+                await waitForAuthFunctions();
+                
                 // CRITICAL: Ensure auth is initialized BEFORE getting token
-                await ensureAuthInitialized();
-                console.log('[SaveName] Auth initialized');
+                if (typeof ensureAuthInitialized !== 'undefined') {
+                    await ensureAuthInitialized();
+                    console.log('[SaveName] Auth initialized');
+                } else {
+                    console.warn('[SaveName] ensureAuthInitialized not available');
+                }
                 
                 // Get token using getAccessToken from auth.js for proper validation
-                const token = await getAccessToken();
+                const token = typeof getAccessToken !== 'undefined' ? await getAccessToken() : null;
                 
                 console.log('[SaveName] Token available:', !!token);
                 console.log('[SaveName] Token in localStorage:', !!localStorage.getItem('smartstudyplanner_auth0_id_token'));
                 
-                if (!token) {
-                    showProfileError('❌ No authentication token. Please sign in first.');
-                    return;
-                }
-
-                // Use authFetch if available, otherwise use fetch with token
-                const authFetchFn = window.authFetch || (async (url, options) => {
-                    const headers = new Headers(options.headers || {});
-                    if (!headers.has('Authorization')) {
-                        headers.set('Authorization', `Bearer ${token}`);
-                    }
-                    return fetch(url, { ...options, headers });
-                });
-
-                // Call backend API to update display name
-                console.log('saveDisplayName: Calling backend /api/users/me...');
-                const response = await authFetchFn('/api/users/me', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ displayName: displayName })
-                });
-
-                console.log('saveDisplayName: Response status:', response.status);
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    console.error('saveDisplayName: Backend error:', error);
-                    showProfileError(error.detail || 'Failed to update name');
-                    return;
-                }
-
-                const result = await response.json();
-                console.log('saveDisplayName: Backend response:', result);
-                
-                // Update localStorage so dashboard picks up the new name
+                // Always save locally so guest users can have a name too
                 localStorage.setItem('userDisplayName', displayName);
                 
                 // Notify other tabs
@@ -483,6 +721,43 @@
                         timestamp: Date.now()
                     }
                 }));
+                // Also trigger a standard storage event for other tabs to catch
+                localStorage.setItem('__sync_displayName', Date.now().toString());
+
+                if (token) {
+                    // Use authFetch if available, otherwise use fetch with token
+                    const authFetchFn = window.authFetch || (async (url, options) => {
+                        const headers = new Headers(options.headers || {});
+                        if (!headers.has('Authorization')) {
+                            headers.set('Authorization', `Bearer ${token}`);
+                        }
+                        return fetch(url, { ...options, headers });
+                    });
+
+                    // Call backend API to update display name
+                    console.log('saveDisplayName: Calling backend /api/users/me...');
+                    const response = await authFetchFn('/api/users/me', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ displayName: displayName })
+                    });
+
+                    console.log('saveDisplayName: Response status:', response.status);
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        console.error('saveDisplayName: Backend error:', error);
+                        showProfileError(error.detail || 'Failed to update name on server');
+                        return;
+                    }
+
+                    const result = await response.json();
+                    console.log('saveDisplayName: Backend response:', result);
+                } else {
+                    console.log('Guest mode: Display name saved locally.');
+                }
                 
                 // Show success message
                 const successMsg = document.getElementById('profileSuccess');
@@ -512,10 +787,15 @@
 
         async function requestPasswordReset(event) {
             try {
-                await ensureAuthInitialized();
+                // Wait for auth.js to load
+                await waitForAuthFunctions();
+                
+                if (typeof ensureAuthInitialized !== 'undefined') {
+                    await ensureAuthInitialized();
+                }
 
                 // Get the token directly without strict auth check
-                const token = await getAccessToken();
+                const token = typeof getAccessToken !== 'undefined' ? await getAccessToken() : null;
                 
                 console.log('Password reset - Token check:', { tokenExists: !!token });
                 
@@ -531,7 +811,7 @@
                 }
                 
                 // Decode token to get email
-                const decoded = parseJwt(token);
+                const decoded = typeof parseJwt !== 'undefined' ? parseJwt(token) : null;
                 const email = decoded?.email;
                 
                 console.log('Password reset request:', { 
@@ -627,13 +907,19 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // Step 1: Wait for the shared auth initialization to finish
+                // Step 1: Wait for auth functions to be available
                 console.log('Profile: Waiting for auth initialization...');
-                await ensureAuthInitialized();
+                await waitForAuthFunctions();
+                
+                if (typeof ensureAuthInitialized !== 'undefined') {
+                    await ensureAuthInitialized();
+                }
 
                 // Step 2: Initialize page auth UI
                 console.log('Profile: Initializing page auth UI...');
-                initializePageAuthUI();
+                if (typeof initializePageAuthUI !== 'undefined') {
+                    initializePageAuthUI();
+                }
                 
                 // Step 3: Load profile data
                 console.log('Profile: Loading profile data...');

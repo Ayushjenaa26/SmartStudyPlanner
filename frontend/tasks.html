@@ -54,7 +54,8 @@
         <div class="nav-links">
             <a href="/dashboard">Dashboard</a>
             <a href="/planner">Planner</a>
-            <a href="/resources">Resources</a>
+            <a href="/link-library">Link Library</a>
+            <a href="/mindmap">Mind Maps</a>
             <a href="/tasks" class="active">All Tasks</a>
             <a href="/profile">Profile</a>
         </div>
@@ -64,7 +65,6 @@
         <div class="topbar">
             <div>
                 <div class="greeting">Task Management</div>
-                <div class="name" id="userDisplayName">All Study Tasks</div>
             </div>
             <div class="actions">
                 <button class="btn-dark" onclick="window.location.href='/setup'">Set New Goal</button>
@@ -163,7 +163,18 @@
         
         document.addEventListener('DOMContentLoaded', () => {
             console.log('Tasks: Initializing auth...');
-            initializePageAuthUI(); // Initialize auth UI
+            if (typeof initializePageAuthUI !== 'undefined') {
+                initializePageAuthUI(); // Initialize auth UI
+            }
+            
+            // Load user display name from localStorage or backend
+            const savedName = localStorage.getItem('userDisplayName');
+            if (savedName) {
+                const displayNameEl = document.getElementById('userDisplayName');
+                if (displayNameEl) {
+                    displayNameEl.textContent = savedName;
+                }
+            }
             
             // FIX 8: Try to load from backend first, then fall back to localStorage
             window.addEventListener('authReady', async () => {
@@ -182,9 +193,35 @@
         });
         
         // Listen for auth state changes from other tabs
-        window.addEventListener('authStateChanged', () => {
+        window.addEventListener('authStateChanged', (event) => {
             console.log('Tasks: Auth state changed, refreshing UI');
-            initializePageAuthUI();
+            
+            // If displayName was updated, refresh it immediately
+            if (event.detail && event.detail.updated === 'displayName') {
+                const updatedName = localStorage.getItem('userDisplayName');
+                if (updatedName) {
+                    document.getElementById('userDisplayName').textContent = updatedName;
+                    console.log('Tasks: Updated display name to:', updatedName);
+                }
+            }
+            
+            if (typeof initializePageAuthUI !== 'undefined') {
+                initializePageAuthUI();
+            }
+        });
+
+        // Listen for storage changes from other tabs (cross-tab sync)
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'userDisplayName' || event.key === '__sync_displayName') {
+                const updatedName = localStorage.getItem('userDisplayName');
+                if (updatedName) {
+                    const userDisplayName = document.getElementById('userDisplayName');
+                    if (userDisplayName) {
+                        userDisplayName.textContent = updatedName;
+                        console.log('Tasks: Display name updated via storage event:', updatedName);
+                    }
+                }
+            }
         });
         
         function loadAllTasks() {

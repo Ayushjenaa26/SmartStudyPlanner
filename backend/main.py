@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import json
 from dotenv import load_dotenv
@@ -16,6 +17,15 @@ from backend.agent import generate_study_plan
 load_dotenv()
 
 app = FastAPI()
+
+# Add CORS middleware for external access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
@@ -63,6 +73,14 @@ async def read_profile():
 @app.get("/long-term-goal", response_class=HTMLResponse)
 async def read_long_term_goal():
     return serve_html("long-term-goal.html")
+
+@app.get("/mindmap", response_class=HTMLResponse)
+async def read_mindmap():
+    return serve_html("mindmap.html")
+
+@app.get("/link-library", response_class=HTMLResponse)
+async def read_link_library():
+    return serve_html("link-library.html")
 
 # ===== Auth Endpoints =====
 
@@ -722,9 +740,13 @@ async def handle_generate_longterm_plan(request: Request):
             content={"status": "error", "message": str(e)}
         )
 
-@app.get("/resources", response_class=HTMLResponse)
-async def read_resources():
-    return serve_html("resources.html")
+@app.get("/link-library", response_class=HTMLResponse)
+async def read_link_library():
+    return serve_html("link-library.html")
+
+@app.get("/mindmap", response_class=HTMLResponse)
+async def read_mindmap():
+    return serve_html("mindmap.html")
 
 @app.post("/api/save-study-session")
 async def save_study_session(request: Request, user: Optional[dict] = Depends(get_current_user)):
@@ -908,6 +930,237 @@ async def handle_get_resources(request: Request):
             content={"status": "error", "message": str(e)}
         )
 
+@app.post("/api/generate-mindmap")
+async def generate_mindmap(request: Request):
+    """Generate a mind map using Napkin AI API"""
+    try:
+        data = await request.json()
+        topic = data.get("topic", "").strip()
+        
+        if not topic:
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "message": "Topic is required"}
+            )
+            
+        import httpx
+        import asyncio
+        import base64
+        import os
+        
+        api_key = os.getenv("NAPKIN_API_KEY", "sk-d8fa8b810464a3965f9562c4646761ce5717cd94a06e7d7c1d208c5cd6f690ed")
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # 1. Create visual request - Napkin AI requires "format" and "content" fields
+        payload = {
+            "format": "svg",
+            "content": topic
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post("https://api.napkin.ai/v1/visual", json=payload, headers=headers)
+            if resp.status_code != 201:
+                print(f"Napkin API Response: {resp.status_code} - {resp.text}")
+                return JSONResponse(status_code=resp.status_code, content={"status": "error", "message": f"Napkin API Error: {resp.text}"})
+            
+            resp_data = resp.json()
+            request_id = resp_data.get("id")
+            if not request_id:
+                return JSONResponse(status_code=500, content={"status": "error", "message": "No request ID returned from Napkin API"})
+                
+            # 2. Poll for status
+            max_attempts = 15
+            for _ in range(max_attempts):
+                await asyncio.sleep(2)
+                status_resp = await client.get(f"https://api.napkin.ai/v1/visual/{request_id}/status", headers=headers)
+                if status_resp.status_code == 200:
+                    status_data = status_resp.json()
+                    status = status_data.get("status")
+                    if status == "completed":
+                        files = status_data.get("generated_files", [])
+                        if files:
+                            # Extract file URL from array
+                            img_url = files[0].get("url") if isinstance(files[0], dict) else files[0]
+                            # 3. Download the file as base64 to avoid serving issues with Auth headers
+                            img_resp = await client.get(img_url, headers=headers)
+                            img_base64 = base64.b64encode(img_resp.content).decode("utf-8")
+                            mime_type = img_resp.headers.get("Content-Type", "image/png")
+                            if img_url.endswith(".svg"):
+                                mime_type = "image/svg+xml"
+                            data_uri = f"data:{mime_type};base64,{img_base64}"
+                            return {
+                                "status": "success",
+                                "image_url": data_uri
+                            }
+                    elif status in ["failed", "error"]:
+                        return JSONResponse(status_code=500, content={"status": "error", "message": f"Napkin API generation failed"})
+                        
+            return JSONResponse(status_code=504, content={"status": "error", "message": "Mind map generation timed out"})
+
+    except Exception as e:
+        print(f"Error generating mindmap: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
+
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+# ===== Link Management Endpoints (User-specific storage) =====
+
+@app.get("/api/links")
+async def get_user_links(user: Optional[dict] = Depends(get_current_user)):
+    """Get all links for current user - stored in database, not localStorage"""
+    try:
+        from backend.db.collections import users_collection
+        
+        # If not authenticated, return empty array (guest users have links only in localStorage)
+        if not user:
+            return {
+                "status": "success",
+                "links": []
+            }
+        
+        auth0_user_id = user.get("sub")
+        if not auth0_user_id:
+            return {
+                "status": "success",
+                "links": []
+            }
+        
+        users_coll = users_collection()
+        user_doc = users_coll.find_one({"user_id": auth0_user_id})
+        
+        if not user_doc or "links" not in user_doc:
+            return {
+                "status": "success",
+                "links": []
+            }
+        
+        return {
+            "status": "success",
+            "links": user_doc.get("links", [])
+        }
+    except Exception as e:
+        print(f"Error fetching links: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
+
+@app.post("/api/links")
+async def save_user_link(request: Request, user: Optional[dict] = Depends(get_current_user)):
+    """Save a link for current user"""
+    try:
+        from backend.db.collections import users_collection
+        from datetime import datetime
+        
+        # Authentication required for saving links
+        if not user:
+            return JSONResponse(
+                status_code=401,
+                content={"status": "error", "message": "Please sign in to save links"}
+            )
+        
+        auth0_user_id = user.get("sub")
+        if not auth0_user_id:
+            return JSONResponse(
+                status_code=401,
+                content={"status": "error", "message": "Invalid user"}
+            )
+        
+        data = await request.json()
+        users_coll = users_collection()
+        
+        # Create link object
+        link = {
+            "id": data.get("id"),
+            "title": data.get("title"),
+            "url": data.get("url"),
+            "category": data.get("category", "other"),
+            "description": data.get("description", ""),
+            "createdAt": datetime.utcnow().isoformat()
+        }
+        
+        # Update user document - add link to links array
+        result = users_coll.update_one(
+            {"user_id": auth0_user_id},
+            {
+                "$push": {"links": link},
+                "$set": {
+                    "user_id": auth0_user_id,
+                    "email": user.get("email"),
+                    "updated_at": datetime.utcnow()
+                },
+                "$setOnInsert": {
+                    "created_at": datetime.utcnow()
+                }
+            },
+            upsert=True
+        )
+        
+        return {
+            "status": "success",
+            "message": "Link saved successfully",
+            "link": link
+        }
+    except Exception as e:
+        print(f"Error saving link: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
+
+@app.delete("/api/links/{link_id}")
+async def delete_user_link(link_id: str, user: Optional[dict] = Depends(get_current_user)):
+    """Delete a link for current user"""
+    try:
+        from backend.db.collections import users_collection
+        
+        # Authentication required
+        if not user:
+            return JSONResponse(
+                status_code=401,
+                content={"status": "error", "message": "Please sign in to delete links"}
+            )
+        
+        auth0_user_id = user.get("sub")
+        if not auth0_user_id:
+            return JSONResponse(
+                status_code=401,
+                content={"status": "error", "message": "Invalid user"}
+            )
+        
+        users_coll = users_collection()
+        
+        # Remove link from user's links array by link_id
+        result = users_coll.update_one(
+            {"user_id": auth0_user_id},
+            {"$pull": {"links": {"id": int(link_id)}}}
+        )
+        
+        if result.modified_count == 0:
+            return JSONResponse(
+                status_code=404,
+                content={"status": "error", "message": "Link not found"}
+            )
+        
+        return {
+            "status": "success",
+            "message": "Link deleted successfully"
+        }
+    except Exception as e:
+        print(f"Error deleting link: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
+
 

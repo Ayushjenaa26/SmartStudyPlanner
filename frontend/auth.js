@@ -7,7 +7,7 @@ const AUTH_CALLBACK_PATH = "/api/auth/callback";
 const AUTH_SIGNUP_NAME_STORAGE_KEY = "smartstudyplanner_signup_name";
 const AUTH0_DOMAIN_FALLBACK = "dev-y84psqij4rd2gb3u.us.auth0.com";
 const AUTH0_CLIENT_ID_FALLBACK = "Bd1bhLWKMenqyP3BUAuQtgOjY4gcQUJU";
-const AUTH0_REDIRECT_URI_FALLBACK = "http://localhost:8000/api/auth/callback";
+const AUTH0_REDIRECT_URI_FALLBACK = window.location.origin + "/api/auth/callback";
 const KNOWN_STALE_CLIENT_ID = "aRZOJyFKiv1TZyV0ol88oziVDSR1kYsu";
 
 function base64UrlDecode(value) {
@@ -773,7 +773,8 @@ async function initializePageAuthUI() {
         
         if (isAuthenticated) {
             const user = parseJwt(token);
-            const displayName = getDisplayName(user);
+            // First check local storage for custom display name set in Profile, then fallback to token
+            const displayName = localStorage.getItem('userDisplayName') || getDisplayName(user);
             
             // Update user display name if element exists
             const userDisplayName = document.getElementById('userDisplayName');
@@ -785,8 +786,13 @@ async function initializePageAuthUI() {
             const authStatus = document.getElementById('authStatus');
             if (authStatus) {
                 authStatus.style.display = 'none';
-            }
-            
+            }        } else {
+            // Fallback for guest mode: use local storage if set
+            const savedName = localStorage.getItem('userDisplayName');
+            const userDisplayName = document.getElementById('userDisplayName');
+            if (userDisplayName && savedName) {
+                userDisplayName.textContent = savedName;
+            }            
             const authActionBtn = document.getElementById('authActionBtn');
             if (authActionBtn) {
                 authActionBtn.style.display = 'none';
@@ -799,7 +805,7 @@ async function initializePageAuthUI() {
                 btn.id = 'logoutBtn';
                 btn.className = 'btn-dark';
                 btn.textContent = 'Logout';
-                btn.onclick = logoutWithAuth0;
+                btn.onclick = () => logout();
                 authActionBtn.parentElement.insertBefore(btn, authActionBtn);
             }
         } else {
@@ -830,3 +836,16 @@ async function initializePageAuthUI() {
 
 // Call this on DOMContentLoaded for pages that need it
 window.initializePageAuthUI = initializePageAuthUI;
+
+// Keep display name synchronized across local tabs
+window.addEventListener('storage', (e) => {
+    if (e.key === 'userDisplayName' || e.key === '__sync_displayName') {
+        const savedName = localStorage.getItem('userDisplayName');
+        if (savedName) {
+            const userDisplayName = document.getElementById('userDisplayName');
+            if (userDisplayName) {
+                userDisplayName.textContent = savedName;
+            }
+        }
+    }
+});

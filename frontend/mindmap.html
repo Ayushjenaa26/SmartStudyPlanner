@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mind Map Generator - StudyFlow</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script defer src="/static/auth.js"></script>
+    <style>
+        .mindmap-container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            width: 100%;
+        }
+
+        .mindmap-header {
+            margin-bottom: 12px;
+        }
+
+        .mindmap-header h1 {
+            margin: 0 0 8px 0;
+            color: var(--text-dark);
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .mindmap-header p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Generator Section */
+        .generator-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .section-title {
+            margin: 0 0 16px 0;
+            color: var(--text-dark);
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+
+        .label-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .word-count {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: normal;
+        }
+
+        .word-count.warning {
+            color: #f59e0b;
+        }
+
+        .word-count.error {
+            color: #ef4444;
+        }
+
+        .form-group textarea {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+            transition: all 0.2s;
+        }
+
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-group textarea:disabled {
+            background: var(--bg-light);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .input-help {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-top: 4px;
+        }
+
+        .input-help strong {
+            color: var(--text-dark);
+        }
+
+        .requirements {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 12px;
+            color: #1e40af;
+            line-height: 1.6;
+        }
+
+        .requirements ul {
+            margin: 8px 0 0 20px;
+            padding: 0;
+        }
+
+        .requirements li {
+            margin: 4px 0;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .btn-generate {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .btn-generate:hover:not(:disabled) {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-generate:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-generate:disabled {
+            background: var(--border);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .btn-clear {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .btn-clear:hover {
+            border-color: var(--text-muted);
+            color: var(--text-dark);
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .btn-generate:disabled .loading-spinner {
+            display: inline-block;
+        }
+
+        /* Result Section */
+        .result-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-section h2 {
+            margin: 0 0 16px 0;
+            color: var(--text-dark);
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .mindmap-display {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f9fafb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+            margin: 16px 0;
+        }
+
+        .mindmap-display img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-download {
+            background: var(--green-text);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-download:hover {
+            background: #047857;
+            transform: translateY(-1px);
+        }
+
+        .btn-download:active {
+            transform: translateY(0);
+        }
+
+        .btn-copy {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-copy:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Messages */
+        .message {
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-top: 16px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .success-message {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .warning-message {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+
+        /* Examples Section */
+        .examples-section {
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .examples-title {
+            margin: 0 0 12px 0;
+            color: var(--text-dark);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .example-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .example-item:hover {
+            border-color: var(--border);
+            background: #f9fafb;
+        }
+
+        .example-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Info boxes */
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            color: #1e40af;
+            line-height: 1.6;
+        }
+
+        .info-box strong {
+            color: #0c4a6e;
+        }
+
+        .stats-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat {
+            background: var(--bg-light);
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .stat strong {
+            display: block;
+            color: var(--text-dark);
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .mindmap-container {
+                gap: 16px;
+            }
+
+            .generator-section,
+            .result-section {
+                padding: 16px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .btn-generate,
+            .btn-clear {
+                width: 100%;
+            }
+
+            .result-actions {
+                flex-direction: column;
+            }
+
+            .btn-download,
+            .btn-copy {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">StudyFlow</div>
+        <div class="subtitle">AI Smart Planner</div>
+        <div class="nav-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/planner">Planner</a>
+            <a href="/link-library">Link Library</a>
+            <a href="/mindmap" class="active">Mind Maps</a>
+            <a href="/tasks">All Tasks</a>
+            <a href="/profile">Profile</a>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="topbar">
+            <div>
+                <div class="greeting">AI-Powered Tool</div>
+            </div>
+            <div class="actions">
+                <button class="btn-outline" onclick="window.location.href='/profile'">Profile</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="mindmap-container">
+            <!-- Header -->
+            <div class="mindmap-header">
+                <h1>Mind Map Generator</h1>
+                <p>Transform your ideas into visual mind maps powered by AI</p>
+            </div>
+
+            <!-- Examples Section -->
+            <div class="examples-section">
+                <div class="examples-title">Example Topics (Click to use)</div>
+                <div class="example-item" onclick="useExample('Photosynthesis process and its role in plant energy production')">Photosynthesis process and energy conversion</div>
+                <div class="example-item" onclick="useExample('History of World War II including main causes and major events')">History of World War II</div>
+                <div class="example-item" onclick="useExample('Python programming language features and use cases')">Python Programming Basics</div>
+                <div class="example-item" onclick="useExample('Machine Learning concepts including supervised and unsupervised learning')">Machine Learning Introduction</div>
+            </div>
+
+            <!-- Generator Section -->
+            <div class="generator-section">
+                <div class="section-title">Create Your Mind Map</div>
+
+                <div class="info-box">
+                    <strong>📌 Tip:</strong> The clearer and more detailed your topic description, the better the mind map will be structured with meaningful connections.
+                </div>
+
+                <form id="mindmapForm">
+                    <div class="form-group">
+                        <div class="label-info">
+                            <label for="topicInput">Topic or Concept</label>
+                            <span class="word-count"><span id="wordCount">0</span>/100 words</span>
+                        </div>
+                        <textarea 
+                            id="topicInput" 
+                            placeholder="Describe the topic or concept you want to create a mind map for. Be detailed and meaningful! Example: 'Photosynthesis is the process by which plants convert light energy into chemical energy...'"
+                            required
+                        ></textarea>
+                        <div class="input-help">
+                            <strong>Guidelines:</strong> Provide clear, meaningful descriptions. Include key aspects and subtopics you want to explore.
+                        </div>
+                        <div class="requirements">
+                            <strong>Requirements:</strong>
+                            <ul>
+                                <li>Minimum 10 words (must be meaningful and substantive)</li>
+                                <li>Maximum 100 words (focused and clear)</li>
+                                <li>Must contain alphabetic characters</li>
+                                <li>Avoid single words - provide context and detail</li>
+                                <li>Avoid special characters only inputs</li>
+                                <li>Clear, grammatical English text</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-generate" id="generateBtn">
+                            <span class="loading-spinner"></span>
+                            <span id="generateText">Generate Mind Map</span>
+                        </button>
+                        <button type="reset" class="btn-clear">Clear</button>
+                    </div>
+                </form>
+
+                <div class="message error-message" id="errorMessage"></div>
+                <div class="message warning-message" id="warningMessage"></div>
+            </div>
+
+            <!-- Result Section -->
+            <div class="result-section" id="resultSection">
+                <h2>Your Mind Map</h2>
+                
+                <div class="stats-info" id="statsInfo"></div>
+                
+                <div class="mindmap-display" id="mindmapDisplay">
+                    <p style="color: var(--text-muted);">Loading mind map...</p>
+                </div>
+
+                <div class="result-actions">
+                    <button class="btn-download" id="downloadBtn">
+                        Download Image
+                    </button>
+                    <button class="btn-copy" id="copyPromptBtn">
+                        Copy Topic
+                    </button>
+                </div>
+
+                <div class="message success-message" id="successMessage"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MAX_WORDS = 100;
+        const MIN_WORDS = 10;
+        
+        let currentMindmapData = null;
+        let currentTopic = null;
+
+        // Update word count
+        document.getElementById('topicInput').addEventListener('input', function() {
+            const words = this.value.trim().split(/\s+/).filter(w => w.length > 0).length;
+            const wordCountEl = document.getElementById('wordCount');
+            wordCountEl.textContent = words;
+
+            const wordCountContainer = wordCountEl.closest('.word-count');
+            wordCountContainer.classList.remove('warning', 'error');
+
+            if (words > MAX_WORDS) {
+                wordCountContainer.classList.add('error');
+            } else if (words > MAX_WORDS - 10) {
+                wordCountContainer.classList.add('warning');
+            }
+        });
+
+        // Validate input
+        function validateInput(text) {
+            const trimmed = text.trim();
+            const words = trimmed.split(/\s+/).filter(w => w.length > 0);
+            const errors = [];
+
+            if (words.length < MIN_WORDS) {
+                errors.push(`❌ Minimum ${MIN_WORDS} words required (you have ${words.length})`);
+            }
+
+            if (words.length > MAX_WORDS) {
+                errors.push(`❌ Maximum ${MAX_WORDS} words allowed (you have ${words.length})`);
+            }
+
+            if (!trimmed) {
+                errors.push('❌ Topic cannot be empty');
+            }
+
+            if (!/[a-zA-Z]/.test(trimmed)) {
+                errors.push('❌ Topic must contain alphabetic characters');
+            }
+
+            if (trimmed.length < 20) {
+                errors.push('⚠️ Topic should be more descriptive (at least 20 characters recommended)');
+            }
+
+            // Check if it's just special characters
+            if (!/[a-zA-Z0-9]/.test(trimmed)) {
+                errors.push('❌ Topic must contain meaningful text');
+            }
+
+            return errors;
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+            setTimeout(() => {
+                errorEl.classList.remove('show');
+            }, 5000);
+        }
+
+        // Show warning message
+        function showWarning(message) {
+            const warningEl = document.getElementById('warningMessage');
+            warningEl.textContent = message;
+            warningEl.classList.add('show');
+            setTimeout(() => {
+                warningEl.classList.remove('show');
+            }, 5000);
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const successEl = document.getElementById('successMessage');
+            successEl.textContent = message;
+            successEl.classList.add('show');
+            setTimeout(() => {
+                successEl.classList.remove('show');
+            }, 5000);
+        }
+
+        // Use example topic
+        function useExample(text) {
+            document.getElementById('topicInput').value = text;
+            const event = new Event('input');
+            document.getElementById('topicInput').dispatchEvent(event);
+            document.getElementById('topicInput').focus();
+        }
+
+        // Generate mind map
+        document.getElementById('mindmapForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const topic = document.getElementById('topicInput').value;
+            const errors = validateInput(topic);
+
+            if (errors.length > 0) {
+                showError(errors[0]);
+                return;
+            }
+
+            currentTopic = topic;
+            const generateBtn = document.getElementById('generateBtn');
+            const generateText = document.getElementById('generateText');
+
+            generateBtn.disabled = true;
+            generateText.textContent = 'Generating...';
+
+            try {
+                // Call backend API to generate mind map (avoids CORS issues)
+                const response = await fetch('/api/generate-mindmap', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        topic: topic
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.status !== 'success' || !data.image_url) {
+                    throw new Error(data.message || 'No image URL returned from API');
+                }
+
+                // Store data and display
+                currentMindmapData = {
+                    imageUrl: data.image_url,
+                    topic: topic,
+                    generatedAt: new Date().toLocaleString()
+                };
+
+                displayMindmap(data.image_url, topic);
+                showSuccess('Mind map generated successfully!');
+
+            } catch (error) {
+                console.error('Error generating mind map:', error);
+                showError(`❌ Failed to generate mind map: ${error.message}`);
+            } finally {
+                generateBtn.disabled = false;
+                generateText.textContent = 'Generate Mind Map';
+            }
+        });
+
+        // Display mind map
+        function displayMindmap(imageUrl, topic) {
+            const resultSection = document.getElementById('resultSection');
+            const mindmapDisplay = document.getElementById('mindmapDisplay');
+            const statsInfo = document.getElementById('statsInfo');
+
+            // Create and display image
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.alt = 'Generated Mind Map';
+            img.onload = function() {
+                mindmapDisplay.innerHTML = '';
+                mindmapDisplay.appendChild(img);
+            };
+            img.onerror = function() {
+                mindmapDisplay.innerHTML = '<p style="color: #ef4444;">⚠️ Failed to load image. Please try again.</p>';
+            };
+
+            // Show stats
+            const wordCount = topic.trim().split(/\s+/).length;
+            statsInfo.innerHTML = `
+                <div class="stat">
+                    <strong>${wordCount}</strong>
+                    Words
+                </div>
+                <div class="stat">
+                    <strong>${topic.length}</strong>
+                    Characters
+                </div>
+                <div class="stat">
+                    <strong>${new Date().toLocaleTimeString()}</strong>
+                    Generated
+                </div>
+            `;
+
+            resultSection.classList.add('show');
+
+            // Scroll to results
+            setTimeout(() => {
+                resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
+        }
+
+        // Download mind map
+        document.getElementById('downloadBtn').addEventListener('click', async function() {
+            if (!currentMindmapData) return;
+
+            try {
+                const link = document.createElement('a');
+                link.href = currentMindmapData.imageUrl;
+                link.download = `mindmap-${Date.now()}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showSuccess('Mind map downloaded successfully!');
+            } catch (error) {
+                showError('❌ Failed to download mind map');
+            }
+        });
+
+        // Copy topic to clipboard
+        document.getElementById('copyPromptBtn').addEventListener('click', function() {
+            if (!currentTopic) return;
+
+            navigator.clipboard.writeText(currentTopic).then(() => {
+                showSuccess('Topic copied to clipboard!');
+            }).catch(() => {
+                showError('❌ Failed to copy to clipboard');
+            });
+        });
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Wait for auth.js to load and initialize
+                if (typeof ensureAuthInitialized === 'function') {
+                    await ensureAuthInitialized();
+                }
+                if (typeof initializePageAuthUI === 'function') {
+                    initializePageAuthUI();
+                }
+            } catch (e) {
+                console.warn('Auth initialization warning:', e);
+                window.authConfig = window.authConfig || { enabled: false };
+            }
+        });
+
+        // Listen for auth state changes
+        window.addEventListener('authStateChanged', async (event) => {
+            console.log('Auth state changed');
+            initializePageAuthUI();
+        });
+    </script>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
