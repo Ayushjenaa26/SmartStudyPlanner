@@ -786,27 +786,6 @@ async function initializePageAuthUI() {
             const authStatus = document.getElementById('authStatus');
             if (authStatus) {
                 authStatus.style.display = 'none';
-            }        } else {
-            // Fallback for guest mode: use local storage if set
-            const savedName = localStorage.getItem('userDisplayName');
-            const userDisplayName = document.getElementById('userDisplayName');
-            if (userDisplayName && savedName) {
-                userDisplayName.textContent = savedName;
-            }            
-            const authActionBtn = document.getElementById('authActionBtn');
-            if (authActionBtn) {
-                authActionBtn.style.display = 'none';
-            }
-            
-            // Add logout button if not exists
-            const logoutBtn = document.getElementById('logoutBtn');
-            if (!logoutBtn && authActionBtn && authActionBtn.parentElement) {
-                const btn = document.createElement('button');
-                btn.id = 'logoutBtn';
-                btn.className = 'btn-dark';
-                btn.textContent = 'Logout';
-                btn.onclick = () => logout();
-                authActionBtn.parentElement.insertBefore(btn, authActionBtn);
             }
         } else {
             // Show auth buttons if not authenticated

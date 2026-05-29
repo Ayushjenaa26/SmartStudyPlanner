@@ -3,470 +3,784 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>SmartStudy Planner | AI-Powered Study Assistant with OAuth & Token Vault</title>
-  <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="/static/style.css">
-  <!-- Google Fonts & simple CSS reset -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-  <!-- Font Awesome 6 (free icons) -->
+  <title>SmartStudy Planner | AI-Powered Study Assistant</title>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="/static/auth.js" defer></script>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    /* ── Design Tokens ── */
+    :root {
+      --bg:        #F8FAFC;
+      --surface:   #FFFFFF;
+      --primary:   #4F46E5;
+      --secondary: #7C3AED;
+      --text:      #0F172A;
+      --muted:     #64748B;
+      --accent:    #10B981;
+      --border:    #E2E8F0;
+      --font: 'Plus Jakarta Sans', sans-serif;
+
+      --shadow-card:  0 4px 20px -2px rgba(79,70,229,0.10);
+      --shadow-hover: 0 10px 25px -5px rgba(79,70,229,0.15), 0 8px 10px -6px rgba(79,70,229,0.10);
+      --shadow-btn:   0 4px 14px 0   rgba(79,70,229,0.30);
+      --grad:   linear-gradient(135deg, var(--primary), var(--secondary));
     }
 
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: 'Inter', sans-serif;
-      background: #f8fafc;
-      color: #0f172a;
-      line-height: 1.5;
-      scroll-behavior: smooth;
-      height: auto !important;
-      overflow: visible !important;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
     }
 
+    /* ── Utility ── */
     .container {
-      max-width: 1280px;
+      max-width: 1200px;
       margin: 0 auto;
       padding: 0 24px;
+      position: relative;
+      z-index: 2;
+    }
+    @media(min-width:640px){ .container{ padding:0 40px; } }
+
+    .grad-text {
+      background: var(--grad);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
     }
 
-    /* header / nav */
+    /* ── Blobs ── */
+    .blob-wrap {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.22;
+    }
+    .blob-a { width:520px; height:520px; background:radial-gradient(circle,#4F46E5,transparent 70%); top:-120px; right:-140px; }
+    .blob-b { width:440px; height:440px; background:radial-gradient(circle,#7C3AED,transparent 70%); bottom:-80px; left:-120px; }
+    .blob-c { width:320px; height:320px; background:radial-gradient(circle,#10B981,transparent 70%); top:50%; left:50%; transform:translate(-50%,-50%); opacity:0.10; }
+
+    /* ── Navbar ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(248,250,252,0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
     .navbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 20px 0;
-      flex-wrap: wrap;
+      padding: 16px 0;
       gap: 16px;
+      flex-wrap: wrap;
     }
-
     .logo {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      text-decoration: none;
     }
-
     .logo-icon {
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-      width: 40px;
-      height: 40px;
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      color: white;
+      width: 40px; height: 40px;
+      background: var(--grad);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 18px;
+      box-shadow: var(--shadow-btn);
+      flex-shrink: 0;
     }
-
-    .logo h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      background: linear-gradient(135deg, #1e293b, #3b82f6);
-      background-clip: text;
-      -webkit-background-clip: text;
-      color: transparent;
+    .logo-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.02em;
     }
-
-    .nav-buttons {
-      display: flex;
-      gap: 16px;
-    }
+    .logo-name span { background: var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .nav-buttons { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 
     .btn-outline {
-      background: transparent;
-      border: 1px solid #cbd5e1;
-      padding: 10px 22px;
-      border-radius: 40px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-family: var(--font);
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.875rem;
+      color: #334155;
       cursor: pointer;
       transition: all 0.2s ease;
-      color: #1e293b;
+      display: inline-flex; align-items: center; gap: 7px;
     }
-
-    .btn-outline:hover {
-      border-color: #3b82f6;
-      background: #eff6ff;
-    }
+    .btn-outline:hover { background: #f1f5f9; border-color: #cbd5e1; }
 
     .btn-primary {
-      background: #3b82f6;
+      background: var(--grad);
       border: none;
-      padding: 10px 24px;
-      border-radius: 40px;
-      font-weight: 600;
-      color: white;
+      padding: 9px 22px;
+      border-radius: 8px;
+      font-family: var(--font);
+      font-weight: 700;
+      font-size: 0.875rem;
+      color: #fff;
       cursor: pointer;
-      transition: 0.2s;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      transition: all 0.2s ease;
+      display: inline-flex; align-items: center; gap: 7px;
+      box-shadow: var(--shadow-btn);
     }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(79,70,229,0.38); }
 
-    .btn-primary:hover {
-      background: #2563eb;
-      transform: translateY(-2px);
+    /* ── Hero ── */
+    .hero-section {
+      position: relative;
+      padding: 80px 0 72px;
+      overflow: hidden;
     }
-
-    /* hero */
-    .hero {
-      display: flex;
-      flex-direction: column;
+    .hero-inner {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 48px;
       align-items: center;
-      text-align: center;
-      padding: 60px 0 40px;
+    }
+    @media(min-width:1024px){
+      .hero-inner { grid-template-columns: 1fr 1fr; gap: 64px; }
     }
 
-    .hero-badge {
-      background: #e0f2fe;
-      padding: 6px 14px;
-      border-radius: 40px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: #0369a1;
-      margin-bottom: 24px;
+    .hero-eyebrow {
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      background: #EEF2FF;
+      border: 1px solid #c7d2fe;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 20px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .eyebrow-dot {
+      width: 7px; height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse-dot 2.2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100%{ transform:scale(1); opacity:1; }
+      50%{ transform:scale(0.7); opacity:0.5; }
     }
 
-    .hero h2 {
-      font-size: 3.2rem;
+    .hero-title {
+      font-size: clamp(2.6rem, 5.5vw, 4rem);
       font-weight: 800;
-      background: linear-gradient(to right, #0f172a, #3b82f6);
-      background-clip: text;
-      -webkit-background-clip: text;
-      color: transparent;
-      max-width: 800px;
-      line-height: 1.2;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 18px;
     }
-
-    .hero p {
-      font-size: 1.2rem;
-      color: #334155;
-      max-width: 700px;
-      margin-top: 24px;
+    .hero-desc {
+      font-size: 1.05rem;
+      color: var(--muted);
+      line-height: 1.75;
+      max-width: 500px;
+      margin-bottom: 32px;
     }
-
     .hero-cta {
-      margin-top: 32px;
       display: flex;
-      gap: 20px;
+      gap: 14px;
       flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    /* features grid */
-    .section-title {
-      text-align: center;
-      font-size: 2rem;
-      font-weight: 700;
-      margin: 60px 0 32px;
-      position: relative;
-    }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 28px;
-      margin-bottom: 48px;
-    }
-
-    .feature-card {
-      background: white;
-      border-radius: 28px;
-      padding: 28px 24px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.05);
-      transition: all 0.25s;
-      border: 1px solid #eef2ff;
-    }
-
-    .feature-card:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 24px 40px rgba(0,0,0,0.08);
-      border-color: #cbdffc;
-    }
-
-    .feature-icon {
-      background: #eef2ff;
-      width: 56px;
-      height: 56px;
-      border-radius: 24px;
-      display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      color: #3b82f6;
-      margin-bottom: 20px;
     }
-
-    .feature-card h3 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin-bottom: 12px;
-    }
-
-    .feature-card p {
-      color: #475569;
-      margin-bottom: 20px;
-    }
-
-    .oauth-badge {
-      background: #f1f5f9;
-      padding: 4px 12px;
-      border-radius: 30px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      color: #1e40af;
-      display: inline-block;
-    }
-
-    /* OAuth + Token Vault special section */
-    .token-vault-section {
-      background: linear-gradient(135deg, #0f172a, #1e293b);
-      border-radius: 2rem;
-      padding: 48px 40px;
-      margin: 48px 0 56px;
-      color: white;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      gap: 32px;
-    }
-
-    .vault-text {
-      flex: 2;
-    }
-
-    .vault-text h3 {
-      font-size: 1.8rem;
-      margin-bottom: 16px;
-      font-weight: 700;
-    }
-
-    .vault-text p {
-      color: #cbd5e1;
-      margin-bottom: 20px;
-    }
-
-    .vault-icon {
-      flex: 1;
-      text-align: center;
-      font-size: 5rem;
-      background: rgba(255,255,255,0.05);
-      border-radius: 60px;
-      padding: 20px;
-    }
-
-    /* demo / interactive toaster */
-    .demo-zone {
-      background: #ffffff;
-      border-radius: 32px;
-      box-shadow: 0 20px 35px -12px rgba(0,0,0,0.1);
-      margin: 40px 0 60px;
-      padding: 32px 32px 40px;
-      text-align: center;
-    }
-
-    .demo-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 18px;
-      margin: 28px 0 16px;
-    }
-
-    .simulate-btn {
-      background: #f1f5f9;
+    .btn-hero {
+      background: var(--grad);
       border: none;
-      padding: 12px 28px;
-      border-radius: 40px;
-      font-weight: 600;
+      padding: 14px 30px;
+      border-radius: 999px;
+      font-family: var(--font);
+      font-weight: 700;
+      font-size: 1rem;
+      color: #fff;
       cursor: pointer;
-      transition: 0.2s;
-      display: inline-flex;
+      transition: all 0.2s ease;
+      display: inline-flex; align-items: center; gap: 10px;
+      box-shadow: var(--shadow-btn);
+    }
+    .btn-hero:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(79,70,229,0.38); }
+
+    .btn-ghost {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 14px 26px;
+      border-radius: 999px;
+      font-family: var(--font);
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-ghost:hover { background: #f1f5f9; border-color: #94a3b8; }
+    .btn-ghost .arrow { transition: transform 0.2s; }
+    .btn-ghost:hover .arrow { transform: translateX(3px); }
+
+    /* hero trust strip */
+    .trust-strip {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+    .trust-avatars { display: flex; }
+    .trust-avatars span {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      margin-left: -8px;
+      background: #EEF2FF;
+      color: var(--primary);
+      font-weight: 700;
+    }
+    .trust-avatars span:first-child { margin-left: 0; }
+    .trust-text { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+    .trust-text strong { color: var(--text); font-weight: 700; }
+
+    /* ── Hero Visual Card ── */
+    .hero-visual {
+      perspective: 2000px;
+      display: flex;
+      justify-content: center;
+    }
+    .hero-card-3d {
+      background: var(--surface);
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-hover);
+      padding: 28px;
+      width: 100%;
+      max-width: 420px;
+      transform: rotateX(5deg) rotateY(-12deg);
+      transition: transform 0.4s ease, box-shadow 0.4s ease;
+    }
+    .hero-card-3d:hover {
+      transform: rotateX(2deg) rotateY(-6deg);
+      box-shadow: 0 24px 50px -8px rgba(79,70,229,0.20);
+    }
+    .hc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+    .hc-dots span {
+      display: inline-block;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+    .hc-dots span:nth-child(1){ background:#fc5c65; }
+    .hc-dots span:nth-child(2){ background:#fed330; }
+    .hc-dots span:nth-child(3){ background:#26de81; }
+    .hc-badge {
+      background: #EEF2FF;
+      color: var(--primary);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+    .hc-mindmap {
+      background: linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 18px;
+      position: relative;
+      min-height: 130px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .mm-center {
+      background: var(--grad);
+      color: white;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 8px 16px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow-btn);
+    }
+    .mm-nodes {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .mm-node {
+      background: white;
+      border: 1px solid var(--border);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      padding: 5px 11px;
+      border-radius: 999px;
+      box-shadow: 0 2px 6px rgba(79,70,229,0.08);
+    }
+    .mm-node.active { border-color: var(--primary); color: var(--primary); background: #EEF2FF; }
+    .hc-tasks { display: flex; flex-direction: column; gap: 9px; }
+    .hc-task {
+      display: flex;
       align-items: center;
       gap: 10px;
+      font-size: 0.83rem;
+      font-weight: 500;
+      color: var(--text);
     }
-
-    .simulate-btn i {
-      font-size: 1.1rem;
+    .hc-task-check {
+      width: 20px; height: 20px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+      flex-shrink: 0;
     }
-
-    .simulate-btn:hover {
+    .hc-task-check.done { background: #DCFCE7; color: #16a34a; }
+    .hc-task-check.pending { background: #EEF2FF; color: var(--primary); }
+    .hc-task-bar {
+      flex: 1;
+      height: 4px;
       background: #e2e8f0;
-      transform: scale(0.98);
+      border-radius: 4px;
+      overflow: hidden;
     }
+    .hc-task-bar-fill { height: 100%; border-radius: 4px; background: var(--grad); }
 
-    .toast-msg {
-      background: #0f172a;
-      color: white;
-      padding: 14px 20px;
-      border-radius: 60px;
-      display: inline-flex;
+    /* floating pills on card */
+    .hc-float {
+      position: absolute;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 13px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: flex; align-items: center; gap: 7px;
+      box-shadow: var(--shadow-card);
+      animation: float-y 4s ease-in-out infinite;
+    }
+    @keyframes float-y {
+      0%,100%{ transform: translateY(0); }
+      50%{ transform: translateY(-7px); }
+    }
+    .hc-float-1 { top: -14px; right: 20px; color: var(--accent); }
+    .hc-float-2 { bottom: -14px; left: 14px; color: var(--primary); animation-delay: 1.5s; }
+
+    /* user display */
+    .user-display-section {
+      display: none;
       align-items: center;
       gap: 12px;
-      font-size: 0.9rem;
-      margin-top: 20px;
-      max-width: 90%;
+      background: #EEF2FF;
+      border: 1px solid #c7d2fe;
+      border-radius: 12px;
+      padding: 12px 18px;
+      margin-bottom: 20px;
+    }
+    .user-display-section.show { display: flex; }
+    .user-display-label { font-size: 0.82rem; color: var(--primary); font-weight: 600; }
+    .user-display-name { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+
+    /* ── Section shared ── */
+    .section-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #EEF2FF;
+      border: 1px solid #c7d2fe;
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 5px 13px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.12;
+      margin-bottom: 12px;
+    }
+    .section-desc {
+      font-size: 1rem;
+      color: var(--muted);
+      max-width: 520px;
+      line-height: 1.7;
     }
 
-    /* footer */
-    footer {
+    /* ── Features ── */
+    .features-section {
+      padding: 72px 0;
+      position: relative;
+    }
+    .features-header {
       text-align: center;
-      padding: 40px 0 32px;
-      border-top: 1px solid #e2e8f0;
-      margin-top: 40px;
-      color: #5b6e8c;
+      margin-bottom: 48px;
+    }
+    .features-header .section-desc { margin: 0 auto; }
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    @media(min-width:768px){ .features-grid { grid-template-columns: repeat(3,1fr); } }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px 28px;
+      box-shadow: var(--shadow-card);
+      transition: all 0.25s cubic-bezier(0.34,1.2,0.64,1);
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+    }
+    .feature-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(79,70,229,0.03) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    .feature-card:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-hover);
+      border-color: #c7d2fe;
+    }
+    .feature-card:hover::after { opacity: 1; }
+    .feat-icon-wrap {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      margin-bottom: 20px;
+      transition: transform 0.25s;
+    }
+    .feature-card:hover .feat-icon-wrap { transform: scale(1.08) rotate(-4deg); }
+    .feat-icon-wrap.indigo { background:#EEF2FF; color: var(--primary); }
+    .feat-icon-wrap.violet { background:#F5F3FF; color: #7C3AED; }
+    .feat-icon-wrap.emerald { background:#ECFDF5; color: #059669; }
+    .feature-card h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 10px;
+    }
+    .feature-card p {
+      font-size: 0.93rem;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+    .feat-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      padding: 4px 11px;
+      border-radius: 999px;
     }
 
-    @media (max-width: 700px) {
-      .hero h2 { font-size: 2.2rem; }
-      .navbar { flex-direction: column; }
-      .token-vault-section { flex-direction: column; text-align: center; }
+    /* ── How It Works ── */
+    .how-section {
+      padding: 72px 0;
+      background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .how-section .blob-wrap .blob { opacity: 0.12; }
+    .how-inner { position: relative; z-index: 2; }
+    .how-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .how-header .section-tag { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); color: #a5b4fc; }
+    .how-header .section-title { color: #fff; }
+    .how-header .section-desc { color: #a5b4fc; margin: 0 auto; }
+    .steps-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    @media(min-width:768px){ .steps-grid { grid-template-columns: repeat(3,1fr); } }
+    .step-card {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px;
+      padding: 28px 24px;
+      transition: background 0.2s;
+    }
+    .step-card:hover { background: rgba(255,255,255,0.11); }
+    .step-num {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 16px;
+      background: var(--grad);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .step-card h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .step-card p { font-size: 0.9rem; color: #94a3b8; line-height: 1.65; }
+
+    /* ── CTA ── */
+    .cta-section {
+      padding: 72px 0;
+      position: relative;
+      z-index: 2;
+    }
+    .cta-box {
+      background: linear-gradient(135deg, #4338ca 0%, #5b21b6 100%);
+      border-radius: 28px;
+      padding: 64px 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-box::before {
+      content: '✦';
+      position: absolute;
+      font-size: 200px;
+      top: -60px; right: -20px;
+      color: rgba(255,255,255,0.04);
+      pointer-events: none;
+    }
+    .cta-box h3 {
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.025em;
+      margin-bottom: 14px;
+    }
+    .cta-box p { color: #c7d2fe; font-size: 1.05rem; max-width: 480px; margin: 0 auto 32px; }
+    .btn-cta-white {
+      background: #fff;
+      color: var(--primary);
+      border: none;
+      padding: 14px 32px;
+      border-radius: 999px;
+      font-family: var(--font);
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex; align-items: center; gap: 9px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+    }
+    .btn-cta-white:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,0.22); }
+    .btn-cta-white .arrow { transition: transform 0.2s; }
+    .btn-cta-white:hover .arrow { transform: translateX(3px); }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0 24px;
+      position: relative;
+      z-index: 2;
+    }
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .footer-logo { display: flex; align-items: center; gap: 9px; }
+    .footer-logo-icon {
+      width: 32px; height: 32px;
+      background: var(--grad);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 14px;
+    }
+    .footer-logo span {
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+    .footer-credit {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .footer-credit strong { color: var(--text); font-weight: 700; }
+    .footer-links { display: flex; gap: 10px; align-items: center; }
+    .footer-link {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      text-decoration: none;
+      font-size: 0.83rem;
+      font-weight: 600;
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+    .footer-link:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: #EEF2FF;
+      box-shadow: 0 2px 8px rgba(79,70,229,0.12);
     }
 
-    /* interactive notification */
-    .hidden-toast { display: none; }
-
-    /* signup name modal */
+    /* ── Signup Modal ── */
     .signup-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,0.6);
+      backdrop-filter: blur(6px);
       display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 1000;
     }
-
-    .signup-modal.hidden {
-      display: none !important;
-    }
-
+    .signup-modal.hidden { display: none !important; }
     .modal-content {
-      background: white;
-      border-radius: 16px;
-      padding: 32px;
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 36px 32px;
       max-width: 400px;
       width: 90%;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
     }
-
     .modal-content h3 {
       font-size: 1.4rem;
-      font-weight: 700;
-      margin-bottom: 16px;
-      color: #0f172a;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
     }
-
-    .modal-content p {
-      font-size: 0.95rem;
-      color: #475569;
-      margin-bottom: 20px;
-    }
-
+    .modal-content p { font-size: 0.93rem; color: var(--muted); margin-bottom: 22px; }
     .modal-input {
       width: 100%;
       padding: 12px 16px;
-      border: 2px solid #e2e8f0;
-      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
       font-size: 1rem;
-      font-family: 'Inter', sans-serif;
+      font-family: var(--font);
       margin-bottom: 20px;
-      transition: all 0.2s ease;
+      transition: all 0.2s;
+      background: var(--bg);
+      color: var(--text);
     }
-
     .modal-input:focus {
       outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
     }
-
-    .modal-buttons {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-    }
-
+    .modal-buttons { display:flex; gap:12px; justify-content:flex-end; }
     .modal-btn {
       padding: 10px 20px;
-      border-radius: 8px;
-      font-weight: 600;
+      border-radius: 10px;
+      font-weight: 700;
       font-size: 0.9rem;
       cursor: pointer;
       border: none;
+      font-family: var(--font);
       transition: 0.2s;
     }
+    .modal-btn-cancel { background: #f1f5f9; color: var(--text); }
+    .modal-btn-cancel:hover { background: var(--border); }
+    .modal-btn-confirm { background: var(--grad); color: #fff; box-shadow: var(--shadow-btn); }
+    .modal-btn-confirm:hover { transform: translateY(-1px); }
 
-    .modal-btn-cancel {
-      background: #f1f5f9;
-      color: #0f172a;
+    /* ── Page load fade-in ── */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(24px);
+      animation: fadeUp 0.6s ease forwards;
+    }
+    .fade-up.d1 { animation-delay: 0.1s; }
+    .fade-up.d2 { animation-delay: 0.22s; }
+    .fade-up.d3 { animation-delay: 0.34s; }
+    .fade-up.d4 { animation-delay: 0.46s; }
+    .fade-up.d5 { animation-delay: 0.58s; }
+    @keyframes fadeUp {
+      to { opacity:1; transform:translateY(0); }
     }
 
-    .modal-btn-cancel:hover {
-      background: #e2e8f0;
+    /* ── Divider between sections ── */
+    .section-divider {
+      width: 100%;
+      height: 1px;
+      background: var(--border);
+      position: relative;
+      z-index: 2;
     }
 
-    .modal-btn-confirm {
-      background: #3b82f6;
-      color: white;
+    @media(max-width:640px){
+      .hero-section { padding: 48px 0 40px; }
+      .features-section { padding: 56px 0; }
+      .how-section { padding: 56px 0; }
+      .cta-section { padding: 56px 0; }
+      .cta-box { padding: 40px 24px; }
+      footer .footer-inner { flex-direction: column; align-items: flex-start; }
     }
 
-    .modal-btn-confirm:hover {
-      background: #2563eb;
-    }
-
-    /* user display */
-    .user-display-section {
-      background: #f0f9ff;
-      border: 2px solid #bfdbfe;
-      border-radius: 12px;
-      padding: 16px 20px;
-      margin-bottom: 24px;
-      text-align: center;
-      display: none;
-    }
-
-    .user-display-section.show {
-      display: block;
-    }
-
-    .user-display-label {
-      font-size: 0.85rem;
-      color: #0369a1;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .user-display-name {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: #0f172a;
+    @media(prefers-reduced-motion:reduce){
+      *, *::before, *::after { animation: none !important; transition: none !important; }
     }
   </style>
 </head>
 <body>
 
-<!-- Signup Name Modal -->
+<!-- ── Signup Modal ── -->
 <div id="signupNameModal" class="signup-modal hidden">
   <div class="modal-content">
     <h3>What's your name?</h3>
-    <p>We'll display this on your dashboard</p>
-    <input
-      type="text"
-      id="signupNameInput"
-      class="modal-input"
-      placeholder="Enter your name"
-      autocomplete="name"
-    />
+    <p>We'll display this on your dashboard.</p>
+    <input type="text" id="signupNameInput" class="modal-input" placeholder="Enter your name" autocomplete="name" />
     <div class="modal-buttons">
       <button id="signupNameCancelBtn" class="modal-btn modal-btn-cancel">Cancel</button>
       <button id="signupNameConfirmBtn" class="modal-btn modal-btn-confirm">Continue</button>
@@ -474,236 +788,283 @@
   </div>
 </div>
 
-<div class="container">
-  <!-- Navigation with real login/signup simulation -->
-  <div class="navbar">
-    <div class="logo">
-      <div class="logo-icon"><i class="fas fa-brain"></i></div>
-      <h1>SmartStudy<span style="color:#3b82f6;">Planner</span></h1>
-    </div>
-    <div class="nav-buttons">
-      <button class="btn-outline" id="googleNavBtn"><i class="fab fa-google"></i> Google</button>
-      <button class="btn-outline" id="signupNavBtn"><i class="fas fa-user-plus"></i> Sign Up</button>
-      <button class="btn-primary" id="loginNavBtn"><i class="fas fa-key"></i> Log In</button>
-      <button class="btn-dark" id="logoutBtn" style="display:none;" onclick="logoutWithAuth0()"><i class="fas fa-sign-out-alt"></i> Logout</button>
-      <button class="btn-primary" id="dashboardBtn" style="display:none;" onclick="window.location.href='/dashboard'"><i class="fas fa-chart-line"></i> Go to Dashboard</button>
-    </div>
+<!-- ── Header / Navbar ── -->
+<header>
+  <div class="container">
+    <nav class="navbar">
+      <div class="logo">
+        <div class="logo-icon"><i class="fas fa-brain"></i></div>
+        <span class="logo-name">SmartStudy<span>Planner</span></span>
+      </div>
+      <div class="nav-buttons">
+        <button class="btn-outline" id="googleNavBtn"><i class="fab fa-google"></i> Google</button>
+        <button class="btn-outline" id="signupNavBtn"><i class="fas fa-user-plus"></i> Sign Up</button>
+        <button class="btn-primary" id="loginNavBtn"><i class="fas fa-key"></i> Log In</button>
+        <button class="btn-primary" id="logoutBtn" style="display:none;" onclick="logoutWithAuth0()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        <button class="btn-primary" id="dashboardBtn" style="display:none;" onclick="window.location.href='/dashboard'"><i class="fas fa-chart-line"></i> Dashboard</button>
+      </div>
+    </nav>
   </div>
+</header>
 
-  <!-- Hero -->
-  <div class="hero">
-    <div class="hero-badge">
-      <i class="fas fa-shield-alt"></i> Powered by Auth0 for AI Agents
-    </div>
-    <!-- User Display Section -->
-    <div id="userDisplay" class="user-display-section">
-      <div class="user-display-label">Welcome back!</div>
-      <div class="user-display-name">Loading...</div>
-    </div>
-    <h2>Your AI study companion,<br>secured by Token Vault</h2>
-    <p>Smart study planner that reads your calendar, suggests optimal study slots, and respects your privacy — without ever touching your passwords.</p>
-    <div class="hero-cta">
-      <button class="btn-primary" id="heroLoginBtn" style="padding: 14px 32px; font-size:1rem;"><i class="fas fa-robot"></i> Get started — AI access</button>
-      <button class="btn-outline" id="learnMoreBtn"><i class="fas fa-chevron-circle-right"></i> How OAuth works</button>
-    </div>
+<!-- ── Hero ── -->
+<section class="hero-section">
+  <div class="blob-wrap">
+    <div class="blob blob-a"></div>
+    <div class="blob blob-b"></div>
+    <div class="blob blob-c"></div>
   </div>
+  <div class="container">
+    <div class="hero-inner">
 
-  <!-- Features Grid (explain study planner + OAuth) -->
-  <div class="section-title">
-    ✨ Why students love SmartStudy Planner
-  </div>
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feature-icon"><i class="fas fa-calendar-check"></i></div>
-      <h3>Calendar intelligence</h3>
-      <p>Connects to Google Calendar via <strong>Auth0 Token Vault</strong>. Agent finds free blocks, avoids class overlaps, and suggests deep study sessions.</p>
-      <span class="oauth-badge"><i class="fas fa-lock"></i> OAuth 2.0 + refresh tokens</span>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon"><i class="fas fa-robot"></i></div>
-      <h3>AI Study Scheduler</h3>
-      <p>Natural language: "Find me 3 hours tomorrow for CS prep". AI agent uses <strong>delegated authorization</strong> and respects your consent.</p>
-      <span class="oauth-badge"><i class="fas fa-magic"></i> LLM + calendar tools</span>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon"><i class="fas fa-shield-hooded"></i></div>
-      <h3>Zero password exposure</h3>
-      <p>Your Google credentials never touch our backend. Token Vault stores & rotates tokens securely — human-in-the-loop consent always.</p>
-      <span class="oauth-badge"><i class="fas fa-vault"></i> Token Vault ready</span>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon"><i class="fas fa-clock"></i></div>
-      <h3>Async approvals</h3>
-      <p>Need to post to Slack or add a task? Agent requests step‑up auth. You approve from mobile — stays in control.</p>
-      <span class="oauth-badge"><i class="fas fa-mobile-alt"></i> CIBA ready</span>
-    </div>
-  </div>
+      <!-- Left: text -->
+      <div>
+        <div id="userDisplay" class="user-display-section">
+          <div>
+            <div class="user-display-label">Welcome back!</div>
+            <div class="user-display-name">Loading...</div>
+          </div>
+        </div>
 
-  <!-- Deep dive OAuth + Token Vault section -->
-  <div class="token-vault-section">
-    <div class="vault-text">
-      <h3><i class="fas fa-database"></i> How Auth0 for AI Agents powers this</h3>
-      <p><strong>Connected Accounts for Token Vault</strong> lets your AI assistant act on your behalf — but only what you explicitly allow. Every request to Google Calendar is mediated by short-lived access tokens stored inside Auth0. No API keys embedded in agent code. No credential leaks.</p>
-      <p><i class="fas fa-check-circle" style="color:#10b981;"></i> Refresh token rotation & consent delegation out-of-the-box. Your study planner never stores secrets — it just asks Token Vault: "Give me a fresh token for user X".</p>
-    </div>
-    <div class="vault-icon">
-      <i class="fas fa-people-arrows"></i>
-      <div style="font-size: 0.9rem; margin-top: 12px;">Agent ↔ Token Vault</div>
+        <div class="hero-eyebrow fade-up d1">
+          <span class="eyebrow-dot"></span>
+          AI-powered study assistant
+        </div>
+
+        <h1 class="hero-title fade-up d2">
+          Study smarter,<br>
+          learn <span class="grad-text">faster.</span>
+        </h1>
+
+        <p class="hero-desc fade-up d3">
+          SmartStudy Planner combines AI intelligence with your workflow — generate visual mind maps, break down complex tasks, and keep your most important resources in one beautiful place.
+        </p>
+
+        <div class="hero-cta fade-up d4">
+          <button class="btn-hero" id="heroLoginBtn">
+            <i class="fas fa-robot"></i> Get started free
+          </button>
+          <button class="btn-ghost" id="learnMoreBtn">
+            See how it works <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+          </button>
+        </div>
+
+        <div class="trust-strip fade-up d5">
+          <div class="trust-avatars">
+            <span>A</span><span>B</span><span>C</span><span>D</span>
+          </div>
+          <p class="trust-text">Trusted by <strong>12,000+</strong> students worldwide</p>
+        </div>
+      </div>
+
+      <!-- Right: isometric card -->
+      <div class="hero-visual fade-up d3" style="position:relative;">
+        <div class="hc-float hc-float-1">
+          <i class="fas fa-check-circle"></i> Map generated!
+        </div>
+        <div class="hero-card-3d">
+          <div class="hc-header">
+            <div class="hc-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <span class="hc-badge">✦ AI active</span>
+          </div>
+          <div class="hc-mindmap">
+            <div class="mm-center">Machine Learning</div>
+            <div class="mm-nodes">
+              <span class="mm-node active">Supervised</span>
+              <span class="mm-node">Unsupervised</span>
+              <span class="mm-node active">Neural Nets</span>
+              <span class="mm-node">Clustering</span>
+            </div>
+          </div>
+          <div class="hc-tasks">
+            <div class="hc-task">
+              <div class="hc-task-check done"><i class="fas fa-check"></i></div>
+              <span style="flex:1">Research phase</span>
+              <div class="hc-task-bar"><div class="hc-task-bar-fill" style="width:100%"></div></div>
+            </div>
+            <div class="hc-task">
+              <div class="hc-task-check done"><i class="fas fa-check"></i></div>
+              <span style="flex:1">Build outline</span>
+              <div class="hc-task-bar"><div class="hc-task-bar-fill" style="width:100%"></div></div>
+            </div>
+            <div class="hc-task">
+              <div class="hc-task-check pending"><i class="fas fa-ellipsis-h"></i></div>
+              <span style="flex:1">Write draft</span>
+              <div class="hc-task-bar"><div class="hc-task-bar-fill" style="width:60%"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="hc-float hc-float-2">
+          <i class="fas fa-bookmark"></i> 4 links saved
+        </div>
+      </div>
+
     </div>
   </div>
+</section>
 
-  <!-- Interactive demo: simulate Token Vault + OAuth login flow -->
-  <div class="demo-zone">
-    <h3><i class="fas fa-hand-pointer"></i> Interactive demo: Token Vault in action</h3>
-    <p style="color: #475569; max-width: 600px; margin: 8px auto;">Click below to simulate how the AI agent retrieves a Google Calendar token via Auth0 (mock consent flow).</p>
-    <div class="demo-buttons">
-      <button id="simulateConsentBtn" class="simulate-btn"><i class="fab fa-google"></i> Connect Google Calendar (Token Vault)</button>
-      <button id="simulateAgentReadBtn" class="simulate-btn"><i class="fas fa-calendar-week"></i> Agent: "Find free study time"</button>
-      <button id="simulateAsyncApprovalBtn" class="simulate-btn"><i class="fas fa-comment-dots"></i> Async approval (Slack status)</button>
+<!-- ── Features ── -->
+<div class="section-divider"></div>
+<section class="features-section" id="features">
+  <div class="blob-wrap" style="position:absolute;inset:0;pointer-events:none;overflow:hidden;">
+    <div class="blob" style="width:400px;height:400px;background:radial-gradient(circle,#4F46E5,transparent 70%);top:-80px;right:-80px;opacity:0.07;"></div>
+  </div>
+  <div class="container">
+    <div class="features-header">
+      <span class="section-tag"><i class="fas fa-sparkles"></i> Features</span>
+      <h2 class="section-title">Everything you need<br>to <span class="grad-text">ace your studies</span></h2>
+      <p class="section-desc">Three powerful tools that work together seamlessly — all driven by AI built specifically for students.</p>
     </div>
-    <div id="interactiveToast" class="toast-msg hidden-toast">
-      <i class="fas fa-circle-info"></i> <span id="toastMessage">Demo message</span>
-    </div>
-    <div style="margin-top: 28px; font-size: 0.85rem; background:#f1f5f9; padding: 12px; border-radius: 24px;">
-      <i class="fas fa-lightbulb"></i> <strong>Real OAuth flow:</strong> After login, user grants <code>calendar.events.readonly</code> scope. Auth0 stores refresh token. AI agent uses <code>getAccessTokenForConnection()</code> → Google API works seamlessly.
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feat-icon-wrap indigo"><i class="fas fa-project-diagram"></i></div>
+        <h3>Mind Map Generation</h3>
+        <p>Drop any topic or paste your notes — the AI instantly builds a structured, interactive mind map. Visualise connections, branches, and key concepts at a glance.</p>
+        <span class="feat-tag"><i class="fas fa-magic"></i> AI-generated</span>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon-wrap violet"><i class="fas fa-tasks"></i></div>
+        <h3>Task Analysis</h3>
+        <p>Break down your syllabus or assignment into prioritised, time-estimated micro-tasks. The AI analyses complexity and suggests the optimal order to tackle each item.</p>
+        <span class="feat-tag"><i class="fas fa-chart-bar"></i> Smart priority</span>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon-wrap emerald"><i class="fas fa-bookmark"></i></div>
+        <h3>Link Library</h3>
+        <p>Save important resources — articles, videos, papers — with one click. The AI auto-tags and summarises each link so you find exactly what you need in seconds.</p>
+        <span class="feat-tag"><i class="fas fa-tags"></i> Auto-tagged</span>
+      </div>
     </div>
   </div>
+</section>
 
-  <!-- Extra blog / hackathon note -->
-  <div style="background:#eef2ff; border-radius: 28px; padding: 32px; text-align:center; margin-bottom: 40px;">
-    <i class="fas fa-trophy" style="font-size: 2rem; color:#f59e0b;"></i>
-    <h4 style="margin: 12px 0;">🏆 Built for "Authorized to Act" Hackathon</h4>
-    <p>Uses <strong>Token Vault</strong> from Auth0 for AI Agents. Secure, consent-driven, and privacy-first study assistant. Check the video & repo included.</p>
+<!-- ── How It Works ── -->
+<section class="how-section" id="how-it-works">
+  <div class="blob-wrap">
+    <div class="blob blob-a"></div>
+    <div class="blob blob-b"></div>
   </div>
+  <div class="container how-inner">
+    <div class="how-header">
+      <span class="section-tag">How it works</span>
+      <h2 class="section-title">From topic to mastery<br>in three steps</h2>
+      <p class="section-desc">SmartStudy Planner is designed to get out of your way and let you focus on what matters — learning.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <h4>Connect &amp; sign in</h4>
+        <p>Create an account in seconds with Google or email. Your data is private and securely stored — your credentials stay yours.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <h4>Add your content</h4>
+        <p>Paste a topic, upload notes, or save a link. The AI automatically maps, analyses, and organises everything for you.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <h4>Study &amp; review</h4>
+        <p>Explore interactive mind maps, work through prioritised tasks, and revisit saved resources — all from one clean dashboard.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-  <footer>
-    <p><i class="fas fa-lock"></i> Powered by Auth0 AI Agents — Token Vault • OAuth2 • CIBA • FGA ready</p>
-    <p style="margin-top: 12px;">© 2026 SmartStudy Planner — Sovereign AI for students</p>
-  </footer>
-</div>
+<!-- ── CTA ── -->
+<section class="cta-section">
+  <div class="container">
+    <div class="cta-box">
+      <h3>Ready to transform<br>how you study?</h3>
+      <p>Join thousands of students already using SmartStudy Planner to save time and retain more.</p>
+      <button class="btn-cta-white" id="ctaSignupBtn">
+        Start for free <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <div class="footer-logo-icon"><i class="fas fa-brain"></i></div>
+        <span>SmartStudy Planner</span>
+      </div>
+      <div class="footer-credit">
+        Made with <span style="color:var(--primary);">♥</span> by <strong>Ayush Jena</strong><br>
+        <span style="font-size:0.78rem;color:#94a3b8;">© 2026 SmartStudy Planner</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/Ayushjenaa26" target="_blank" rel="noopener" class="footer-link">
+          <i class="fab fa-github"></i> GitHub
+        </a>
+        <a href="https://www.linkedin.com/in/ayush-jena-655a78291/" target="_blank" rel="noopener" class="footer-link">
+          <i class="fab fa-linkedin"></i> LinkedIn
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>
 
 <script>
-  // Interactive demo simulation: showing how Token Vault + OAuth + async flows work
-  // No actual backend, but educates user and mirrors hackathon requirements.
-  const toastDiv = document.getElementById('interactiveToast');
-  const toastMsgSpan = document.getElementById('toastMessage');
-
-  function showMessage(message, isError = false) {
-    toastMsgSpan.innerText = message;
-    toastDiv.classList.remove('hidden-toast');
-    toastDiv.style.background = isError ? '#991b1b' : '#0f172a';
-    toastDiv.style.color = 'white';
-    // auto hide after 4 seconds
-    setTimeout(() => {
-      toastDiv.classList.add('hidden-toast');
-    }, 4500);
-  }
-
-  // Simulate consent + token vault connection
-  document.getElementById('simulateConsentBtn').addEventListener('click', () => {
-    // mock oauth consent screen experience
-    showMessage('🔐 OAuth consent screen → User approved "Calendar.ReadOnly" → Auth0 Token Vault now stores refresh token for this user. ✅ Agent can request tokens securely.', false);
-    // optional: extra style to simulate grant
-    const btn = document.getElementById('simulateConsentBtn');
-    btn.innerHTML = '<i class="fab fa-google"></i> ✅ Connected (Token Vault active)';
-    btn.style.background = '#dcfce7';
-    btn.style.color = '#166534';
-    setTimeout(() => {
-      btn.innerHTML = '<i class="fab fa-google"></i> Connect Google Calendar (Token Vault)';
-      btn.style.background = '#f1f5f9';
-      btn.style.color = 'inherit';
-    }, 4000);
+  /* ── Auth button wiring (preserved) ── */
+  ['loginNavBtn','heroLoginBtn'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', () => { if (window.loginWithAuth0) window.loginWithAuth0(); });
   });
 
-  // simulate AI agent reading calendar via token vault
-  document.getElementById('simulateAgentReadBtn').addEventListener('click', () => {
-    showMessage('🤖 AI agent calls getAccessTokenForConnection({connection:"google-oauth2", scopes:["calendar.readonly"]}) → Token Vault returns valid access token → Fetching events: "Free slots: Tomorrow 2-4 PM, Wednesday 10 AM-12 PM" ✅', false);
+  document.getElementById('signupNavBtn').addEventListener('click', () => {
+    if (window.signupWithAuth0) window.signupWithAuth0();
   });
 
-  // simulate async approval (step-up auth) for posting to Slack
-  document.getElementById('simulateAsyncApprovalBtn').addEventListener('click', () => {
-    showMessage('📲 [Async Auth] Agent wants to post "Studying mode 🧠" to Slack. Auth0 sends push approval to your device → You click "Approve" → Agent executes action. (Human-in-the-loop + Token Vault)', false);
+  document.getElementById('googleNavBtn').addEventListener('click', () => {
+    if (window.loginWithGoogle) window.loginWithGoogle();
   });
 
-  // LEARN MORE: smooth scroll to OAuth section
+  document.getElementById('ctaSignupBtn').addEventListener('click', () => {
+    if (window.signupWithAuth0) window.signupWithAuth0();
+    else if (window.loginWithAuth0) window.loginWithAuth0();
+  });
+
+  /* ── Smooth scroll for "See how it works" ── */
   document.getElementById('learnMoreBtn').addEventListener('click', () => {
-    document.querySelector('.token-vault-section').scrollIntoView({ behavior: 'smooth' });
-    showMessage('⚡ Auth0 for AI Agents: Token Vault, OAuth delegation, refresh tokens never exposed to agent.', false);
+    document.getElementById('how-it-works').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
-  // Attach real Auth0 actions to homepage auth buttons.
-  const loginBtns = ['loginNavBtn', 'heroLoginBtn'];
-  const signupBtns = ['signupNavBtn'];
-  const googleBtns = ['googleNavBtn'];
-
-  loginBtns.forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) {
-      btn.addEventListener('click', () => {
-        if (window.loginWithAuth0) {
-          window.loginWithAuth0();
-        }
-      });
+  /* ── Auth0 session check on load ── */
+  window.addEventListener('load', () => {
+    if (window.getAccessToken) {
+      window.getAccessToken().then(token => {
+        if (token) window.location.replace('/dashboard');
+      }).catch(() => {});
     }
   });
 
-  signupBtns.forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) {
-      btn.addEventListener('click', () => {
-        if (window.signupWithAuth0) {
-          window.signupWithAuth0();
-        }
-      });
-    }
-  });
-
-  googleBtns.forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) {
-      btn.addEventListener('click', () => {
-        if (window.loginWithGoogle) {
-          window.loginWithGoogle();
-        }
-      });
-    }
-  });
-
-  // extra fallback for the hero button already covered, but ensure "heroLoginBtn" is used.
-  // Also, add a small hover effect for feature cards to explain OAuth roles.
-  const featureCards = document.querySelectorAll('.feature-card');
-  featureCards.forEach(card => {
-    card.addEventListener('click', () => {
-      const title = card.querySelector('h3')?.innerText;
-      if (title && title.includes('Calendar')) {
-        showMessage('📅 Calendar intelligence: Token Vault calls Google Calendar API using OAuth2. No direct secrets.', false);
-      } else if (title && title.includes('AI Study')) {
-        showMessage('🧠 AI Scheduler uses LangChain + Auth0 AI SDK to retrieve tokens and suggest study times.', false);
-      } else if (title && title.includes('Zero password')) {
-        showMessage('🔒 Token Vault ensures your Google refresh token stays inside Auth0. Agent requests tokens on-demand.', false);
-      } else if (title && title.includes('Async approvals')) {
-        showMessage('📱 CIBA flow: Agent sends approval request to Auth0, user authorizes from phone. Perfect for sensitive actions.', false);
+  /* ── Intersection Observer: scroll-triggered fade-up ── */
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        e.target.style.transitionDelay = (i * 0.08) + 's';
+        e.target.classList.add('is-visible');
+        observer.unobserve(e.target);
       }
     });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('.feature-card, .step-card').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    observer.observe(el);
   });
 
-  // explain token vault concept on load
-  window.addEventListener('load', () => {
-    console.log('SmartStudy Planner: Ready. Auth0 Token Vault demo interactive.');
-    if (window.getAccessToken) {
-      window.getAccessToken().then((token) => {
-        if (token) {
-          window.location.replace('/dashboard');
-        }
-      }).catch(() => {
-        // Keep homepage visible if token check fails.
-      });
-    }
-    // show initial subtle toast
-    setTimeout(() => {
-      showMessage('🚀 SmartStudy Planner uses Auth0 for AI Agents: Token Vault + OAuth2. Try the demo buttons above!', false);
-    }, 1000);
-  });
+  const style = document.createElement('style');
+  style.textContent = '.is-visible { opacity: 1 !important; transform: translateY(0) !important; }';
+  document.head.appendChild(style);
 </script>
 </body>
 </html>
