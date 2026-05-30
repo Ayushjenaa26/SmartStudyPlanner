@@ -181,6 +181,14 @@ async function ensureAuthInitialized() {
 }
 
 function getConfiguredRedirectUri() {
+    // Prefer server-provided config if available (ensures frontend and backend use identical redirect URI)
+    try {
+        if (authConfig && authConfig.redirectUri) {
+            return authConfig.redirectUri;
+        }
+    } catch (e) {
+        // ignore and fall back to origin-based value
+    }
     return `${window.location.origin}${AUTH_CALLBACK_PATH}`;
 }
 
