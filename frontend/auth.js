@@ -415,6 +415,49 @@ async function authFetch(url, options = {}) {
     return response;
 }
 
+async function loginAsDemo() {
+    /* Demo mode: bypass Auth0 and create a mock token for feature testing */
+    const demoPayload = {
+        sub: "demo_user_123",
+        email: "demo@smartstudyplanner.com",
+        name: "Demo User",
+        email_verified: true,
+        iss: "https://dev-y84psqij4rd2gb3u.us.auth0.com/",
+        aud: "Bd1bhLWKMenqyP3BUAuQtgOjY4gcQUJU",
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 86400 * 30, // 30 days
+        nonce: "demo_nonce"
+    };
+    
+    // Create JWT-like format: header.payload.signature
+    const header = btoa(JSON.stringify({alg: "HS256", typ: "JWT"}))
+        .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const payload = btoa(JSON.stringify(demoPayload))
+        .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const signature = "demo_signature";
+    
+    const demoToken = `${header}.${payload}.${signature}`;
+    
+    // Store token
+    localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, demoToken);
+    localStorage.setItem("smartstudyplanner_demo_mode", "true");
+    // Clear any existing study links so demo account starts empty
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('studyLinks')) {
+                localStorage.removeItem(key);
+                i--; // adjust index after removal
+            }
+        }
+    } catch (e) {
+        console.warn('[Auth] Error clearing studyLinks for demo mode', e);
+    }
+
+    console.log("[Auth] Demo mode activated - redirecting to dashboard");
+    window.location.href = '/dashboard';
+}
+
 window.getAccessToken    = getAccessToken;
 window.authFetch         = authFetch;
 window.loginWithAuth0    = login;
@@ -422,6 +465,7 @@ window.logoutWithAuth0   = logout;
 window.signupWithAuth0   = signup;
 window.loginWithGoogle   = loginWithGoogle;
 window.ensureAuthInitialized = ensureAuthInitialized;
+window.loginAsDemo       = loginAsDemo;
 
 async function exchangeCodeForTokens(code) {
     const codeVerifier = sessionStorage.getItem(AUTH_CODE_VERIFIER_STORAGE_KEY);

@@ -1,4 +1,5 @@
 import os
+import json
 from functools import lru_cache
 from typing import Any
 
@@ -45,30 +46,58 @@ def _get_jwks_client(domain: str) -> jwt.PyJWKClient:
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-) -> dict[str, Any]:
-    """Get current user from auth token. Raises 401 if no valid credentials provided."""
+) -> dict[str, Any] | None:
+    """Get current user from auth token. Returns None if no valid credentials provided (guest mode)."""
     auth_settings = get_auth_settings()
     
-    # If auth is not configured, allow guest access (return empty dict)
+    # If auth is not configured, allow guest access (return None for guest mode)
     if not auth_settings["enabled"]:
-        return {}
+        return None
     
-    # If no credentials provided, raise 401
+    # If no credentials provided, return None for guest/demo mode
     if credentials is None or not credentials.credentials:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        return None
+
+    token = credentials.credentials
+    
+    # Check for demo mode token (signature is "demo_signature")
+    if token.endswith(".demo_signature"):
+        try:
+            import base64
+            # Demo token format: header.payload.demo_signature
+            parts = token.split(".")
+            if len(parts) == 3:
+                # Decode the payload (add padding if needed)
+                payload_str = parts[1]
+                padding = 4 - len(payload_str) % 4
+                if padding != 4:
+                    payload_str += "=" * padding
+                payload_json = base64.urlsafe_b64decode(payload_str)
+                payload = json.loads(payload_json)
+                # Verify expiry
+                now = int(__import__('time').time())
+                if payload.get('exp', 0) > now:
+                    return payload
+        except Exception as e:
+            print(f"Demo token validation failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid demo token")
 
     domain = auth_settings["domain"]
     audience = auth_settings["audience"]
     issuer = auth_settings["issuer"] or f"https://{domain}/"
 
     try:
-        signing_key = _get_jwks_client(domain).get_signing_key_from_jwt(credentials.credentials).key
+        signing_key = _get_jwks_client(domain).get_signing_key_from_jwt(token).key
         payload = jwt.decode(
-            credentials.credentials,
+            token,
             signing_key,
             algorithms=["RS256"],
             audience=audience,
             issuer=issuer,
+            leeway=120,  # Allow clock skew for freshly issued tokens
+            options={
+                "verify_iat": False,  # iat is informational; don't block immediate post-login requests
+            },
         )
         return payload
     except Exception as exc:

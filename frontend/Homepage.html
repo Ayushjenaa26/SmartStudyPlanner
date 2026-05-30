@@ -844,6 +844,9 @@
           <button class="btn-hero" id="heroLoginBtn">
             <i class="fas fa-robot"></i> Get started free
           </button>
+          <button class="btn-ghost" id="demoDemoBtn" style="background: #10B981; color: white; border: none;">
+            <i class="fas fa-play"></i> Try Demo
+          </button>
           <button class="btn-ghost" id="learnMoreBtn">
             See how it works <span class="arrow"><i class="fas fa-arrow-right"></i></span>
           </button>
@@ -1028,6 +1031,11 @@
   document.getElementById('ctaSignupBtn').addEventListener('click', () => {
     if (window.signupWithAuth0) window.signupWithAuth0();
     else if (window.loginWithAuth0) window.loginWithAuth0();
+  });
+
+  /* ── Demo button: bypass auth for feature testing ── */
+  document.getElementById('demoDemoBtn').addEventListener('click', () => {
+    if (window.loginAsDemo) window.loginAsDemo();
   });
 
   /* ── Smooth scroll for "See how it works" ── */

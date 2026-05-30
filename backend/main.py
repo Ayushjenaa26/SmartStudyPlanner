@@ -188,6 +188,21 @@ async def auth_callback(
                             window.location.href = '/dashboard';
                         }, 500);
                     } else {
+                        // If the state check failed but an id token was stored by the token exchange,
+                        // prefer keeping the user signed in and redirecting to the dashboard instead
+                        // of sending them back to home. This helps when the callback uses a different
+                        // host alias (127.0.0.1 vs localhost) which can break sessionStorage state.
+                        try {
+                            const stored = localStorage.getItem('smartstudyplanner_auth0_id_token');
+                            if (stored) {
+                                document.getElementById('status').textContent = 'Login appears successful (token present). Redirecting to dashboard...';
+                                setTimeout(() => { window.location.href = '/dashboard'; }, 500);
+                                return;
+                            }
+                        } catch (e) {
+                            console.warn('Error checking stored token:', e);
+                        }
+
                         document.getElementById('status').textContent = 'Login failed. Redirecting to home...';
                         setTimeout(() => {
                             window.location.href = '/';
@@ -252,6 +267,9 @@ async def exchange_auth_code(request: Request):
         client_secret = os.getenv("AUTH0_CLIENT_SECRET", "")
         redirect_uri = settings["redirectUri"]
         
+        # Normalize redirect_uri: 127.0.0.1 -> localhost for Auth0 compatibility
+        redirect_uri = redirect_uri.replace("127.0.0.1", "localhost")
+        
         if not client_secret:
             return JSONResponse(
                 status_code=500,
@@ -293,20 +311,103 @@ async def exchange_auth_code(request: Request):
         )
 
 @app.get("/api/me")
-async def get_current_user_profile(user: Optional[dict] = Depends(get_current_user)):
-    """Get current user profile - returns user info if authenticated, guest info if not"""
+async def get_current_user_profile(user: Optional[dict] = Depends(get_current_user), guestSessionId: Optional[str] = None):
+    """Get current user profile - returns user info if authenticated, guest session if not
+    
+    For guest users, accepts optional guestSessionId parameter:
+    - If provided: Reuses existing guest session
+    - If not provided: Creates new guest session (for first page load)
+    """
     if not user:
-        return {
-            "status": "guest",
-            "message": "Not authenticated - guest mode enabled",
-            "user": None
-        }
+        # Guest/demo mode: Reuse or create unique guest session ID for data isolation
+        try:
+            from backend.db.collections import users_collection
+            from datetime import datetime
+            import uuid
+            
+            users_coll = users_collection()
+            
+            # If guestSessionId provided, try to reuse existing session
+            if guestSessionId:
+                try:
+                    # Verify session exists and reuse it
+                    guest_doc = await users_coll.find_one({"guestSessionId": guestSessionId})
+                    if guest_doc:
+                        print(f"Reusing existing guest session: {guestSessionId}")
+                        return {
+                            "status": "guest",
+                            "message": "Not authenticated - guest mode enabled",
+                            "guestSessionId": guestSessionId,
+                            "user": None
+                        }
+                except Exception as e:
+                    print(f"Error checking existing guest session: {e}")
+            
+            # Create new guest session ID for first page load
+            guest_session_id = str(uuid.uuid4())
+            
+            # Store guest session in database to ensure persistence across page reloads
+            guest_doc = await users_coll.find_one_and_update(
+                {"guestSessionId": guest_session_id},
+                {
+                    "$setOnInsert": {
+                        "guestSessionId": guest_session_id,
+                        "auth0UserId": None,
+                        "created_at": datetime.utcnow(),
+                        "links": [],
+                        "is_guest": True
+                    },
+                    "$set": {
+                        "updated_at": datetime.utcnow()
+                    }
+                },
+                upsert=True,
+                return_document=True
+            )
+            
+            print(f"Created new guest session: {guest_session_id}")
+            return {
+                "status": "guest",
+                "message": "Not authenticated - guest mode enabled",
+                "guestSessionId": guest_session_id,
+                "user": None
+            }
+        except Exception as e:
+            print(f"Error creating guest session: {e}")
+            import uuid
+            # Fallback: Return a temporary guest session ID without DB persistence
+            return {
+                "status": "guest",
+                "message": "Not authenticated - guest mode enabled",
+                "guestSessionId": str(uuid.uuid4()),
+                "user": None
+            }
         
     try:
         from backend.db.collections import users_collection
+        from datetime import datetime
         user_id = user.get("sub") or user.get("user_id")
         users_coll = users_collection()
-        db_user = users_coll.find_one({"user_id": user_id})
+        
+        # Ensure user document exists (auto-create if missing)
+        db_user = await users_coll.find_one_and_update(
+            {"auth0UserId": user_id},
+            {
+                "$setOnInsert": {
+                    "auth0UserId": user_id,
+                    "email": user.get("email"),
+                    "name": user.get("name", ""),
+                    "picture": user.get("picture", ""),
+                    "created_at": datetime.utcnow(),
+                    "links": []
+                },
+                "$set": {
+                    "updated_at": datetime.utcnow()
+                }
+            },
+            upsert=True,
+            return_document=True
+        )
         
         # Merge db user info into the token user info so the frontend sees the latest saved displayName
         if db_user:
@@ -341,11 +442,11 @@ async def update_user_profile(request: Request, user: Optional[dict] = Depends(g
         users_coll = users_collection()
         
         # Update or create user document
-        result = users_coll.update_one(
-            {"user_id": user_id},
+        result = await users_coll.update_one(
+            {"auth0UserId": user_id},
             {
                 "$set": {
-                    "user_id": user_id,
+                    "auth0UserId": user_id,
                     "email": user.get("email"),
                     "displayName": data.get("displayName"),
                     "updated_at": datetime.utcnow()
@@ -470,6 +571,9 @@ async def get_latest_plan(current_user: dict = Depends(get_current_user)):
     try:
         from backend.db.collections import study_plans_collection
         
+        if not current_user:
+            return {"status": "error", "message": "Not authenticated", "plan": None}
+
         # FIX 2: Null-guard for auth0_user_id
         auth0_user_id = current_user.get("sub")
         if not auth0_user_id:
@@ -478,7 +582,7 @@ async def get_latest_plan(current_user: dict = Depends(get_current_user)):
         plans_coll = study_plans_collection()
         
         # Find the latest plan for this user, sorted by created_at descending
-        plan = plans_coll.find_one(
+        plan = await plans_coll.find_one(
             {"auth0UserId": auth0_user_id},
             sort=[("created_at", -1)]
         )
@@ -515,7 +619,7 @@ async def get_plans(user: Optional[dict] = Depends(get_current_user)):
             return {"status": "error", "message": "Not authenticated", "plans": []}
         
         plans_coll = study_plans_collection()
-        plans = list(plans_coll.find({"auth0UserId": auth0_user_id}))
+        plans = await plans_coll.find({"auth0UserId": auth0_user_id}).to_list(length=None)
         
         # Convert ObjectId to string for JSON serialization
         for plan in plans:
@@ -542,10 +646,10 @@ async def create_plan(request: Request, user: Optional[dict] = Depends(get_curre
         else:
             user_id = user.get("sub") or user.get("user_id")
         
-        plan_data["user_id"] = user_id
+        plan_data["auth0UserId"] = user_id
         
         plans_coll = study_plans_collection()
-        result = plans_coll.insert_one(plan_data)
+        result = await plans_coll.insert_one(plan_data)
         
         return {"status": "success", "plan_id": str(result.inserted_id)}
     except Exception as e:
@@ -567,7 +671,7 @@ async def get_plan(plan_id: str, user: Optional[dict] = Depends(get_current_user
         from bson import ObjectId
         
         plans_coll = study_plans_collection()
-        plan = plans_coll.find_one({"_id": ObjectId(plan_id)})
+        plan = await plans_coll.find_one({"_id": ObjectId(plan_id)})
         
         if not plan:
             return JSONResponse(
@@ -578,7 +682,7 @@ async def get_plan(plan_id: str, user: Optional[dict] = Depends(get_current_user
         # Check authorization
         if user:
             user_id = user.get("sub") or user.get("user_id")
-            if plan.get("user_id") != user_id:
+            if plan.get("auth0UserId") != user_id:
                 return JSONResponse(
                     status_code=403,
                     content={"status": "error", "message": "Unauthorized"}
@@ -600,7 +704,7 @@ async def delete_plan(plan_id: str, user: Optional[dict] = Depends(get_current_u
         from bson import ObjectId
         
         plans_coll = study_plans_collection()
-        plan = plans_coll.find_one({"_id": ObjectId(plan_id)})
+        plan = await plans_coll.find_one({"_id": ObjectId(plan_id)})
         
         if not plan:
             return JSONResponse(
@@ -611,7 +715,7 @@ async def delete_plan(plan_id: str, user: Optional[dict] = Depends(get_current_u
         # Check authorization
         if user:
             user_id = user.get("sub") or user.get("user_id")
-            if plan.get("user_id") != user_id:
+            if plan.get("auth0UserId") != user_id:
                 return JSONResponse(
                     status_code=403,
                     content={"status": "error", "message": "Unauthorized"}
@@ -683,7 +787,7 @@ async def handle_generate_plan(request: Request, user: dict = Depends(get_curren
         
         try:
             plans_coll = study_plans_collection()
-            result = plans_coll.insert_one(plan_document)
+            result = await plans_coll.insert_one(plan_document)
             plan_data["plan_id"] = str(result.inserted_id)
         except Exception as db_error:
             # If database fails, still return the plan but without ID
@@ -775,7 +879,7 @@ async def save_study_session(request: Request, user: Optional[dict] = Depends(ge
         sessions_coll = study_sessions_collection()
         
         # Upsert - find latest session for this user and update it
-        result = sessions_coll.update_one(
+        result = await sessions_coll.update_one(
             {"auth0UserId": user_id},
             {"$set": session_data},
             upsert=True
@@ -804,7 +908,7 @@ async def load_study_session(user: Optional[dict] = Depends(get_current_user)):
         user_id = user.get("sub") or user.get("user_id")
         sessions_coll = study_sessions_collection()
         
-        session = sessions_coll.find_one({"auth0UserId": user_id})
+        session = await sessions_coll.find_one({"auth0UserId": user_id})
         
         if not session:
             return {
@@ -1016,38 +1120,46 @@ if __name__ == "__main__":
 # ===== Link Management Endpoints (User-specific storage) =====
 
 @app.get("/api/links")
-async def get_user_links(user: Optional[dict] = Depends(get_current_user)):
-    """Get all links for current user - stored in database, not localStorage"""
+async def get_user_links(user: Optional[dict] = Depends(get_current_user), guestSessionId: str = None):
+    """Get all links for current user - supports both authenticated and guest users"""
     try:
         from backend.db.collections import users_collection
-        
-        # If not authenticated, return empty array (guest users have links only in localStorage)
-        if not user:
-            return {
-                "status": "success",
-                "links": []
-            }
-        
-        auth0_user_id = user.get("sub")
-        if not auth0_user_id:
-            return {
-                "status": "success",
-                "links": []
-            }
-        
+
         users_coll = users_collection()
-        user_doc = users_coll.find_one({"user_id": auth0_user_id})
-        
+
+        # Determine which user we're querying for
+        if user:
+            # Authenticated user
+            auth0_user_id = user.get("sub")
+            if not auth0_user_id:
+                return {"status": "success", "links": []}
+            user_doc = await users_coll.find_one({"auth0UserId": auth0_user_id})
+        elif guestSessionId:
+            # Guest user with session ID
+            user_doc = await users_coll.find_one({"guestSessionId": guestSessionId})
+        else:
+            # No authentication and no guest session
+            return {"status": "success", "links": []}
+
         if not user_doc or "links" not in user_doc:
-            return {
-                "status": "success",
-                "links": []
-            }
-        
+            return {"status": "success", "links": []}
+
         return {
             "status": "success",
             "links": user_doc.get("links", [])
         }
+    except RuntimeError as re:
+        # Likely MongoDB not initialized - fall back to local file store for guest links
+        try:
+            if guestSessionId:
+                from backend.db.local_store import get_guest_links
+                links = get_guest_links(guestSessionId)
+                return {"status": "success", "links": links}
+            else:
+                return {"status": "success", "links": []}
+        except Exception as e:
+            print(f"Fallback get_guest_links failed: {e}")
+            return {"status": "success", "links": []}
     except Exception as e:
         print(f"Error fetching links: {str(e)}")
         return JSONResponse(
@@ -1056,29 +1168,45 @@ async def get_user_links(user: Optional[dict] = Depends(get_current_user)):
         )
 
 @app.post("/api/links")
-async def save_user_link(request: Request, user: Optional[dict] = Depends(get_current_user)):
-    """Save a link for current user"""
+async def save_user_link(request: Request, user: Optional[dict] = Depends(get_current_user), guestSessionId: str = None):
+    """Save a link for current user (supports both authenticated and guest users)"""
     try:
-        from backend.db.collections import users_collection
         from datetime import datetime
-        
-        # Authentication required for saving links
-        if not user:
-            return JSONResponse(
-                status_code=401,
-                content={"status": "error", "message": "Please sign in to save links"}
-            )
-        
-        auth0_user_id = user.get("sub")
-        if not auth0_user_id:
-            return JSONResponse(
-                status_code=401,
-                content={"status": "error", "message": "Invalid user"}
-            )
-        
+        try:
+            from backend.db.collections import users_collection
+            use_local_store = False
+        except Exception:
+            use_local_store = True
+
+        # Determine which user we're saving for
+        query_filter = {}
+        update_doc_on_insert = {}
+
+        if user:
+            # Authenticated user
+            auth0_user_id = user.get("sub")
+            if not auth0_user_id:
+                return JSONResponse(status_code=401, content={"status": "error", "message": "Invalid user"})
+            query_filter = {"auth0UserId": auth0_user_id}
+            update_doc_on_insert = {
+                "auth0UserId": auth0_user_id,
+                "email": user.get("email"),
+                "created_at": datetime.utcnow()
+            }
+        elif guestSessionId:
+            # Guest user with session ID
+            query_filter = {"guestSessionId": guestSessionId}
+            update_doc_on_insert = {
+                "guestSessionId": guestSessionId,
+                "auth0UserId": None,
+                "is_guest": True,
+                "created_at": datetime.utcnow()
+            }
+        else:
+            return JSONResponse(status_code=401, content={"status": "error", "message": "Authentication required"})
+
         data = await request.json()
-        users_coll = users_collection()
-        
+
         # Create link object
         link = {
             "id": data.get("id"),
@@ -1088,24 +1216,35 @@ async def save_user_link(request: Request, user: Optional[dict] = Depends(get_cu
             "description": data.get("description", ""),
             "createdAt": datetime.utcnow().isoformat()
         }
-        
+
+        if use_local_store:
+            # Use file-backed local store when DB not available
+            try:
+                from backend.db.local_store import save_guest_link
+                if guestSessionId:
+                    save_guest_link(guestSessionId, link)
+                    return {"status": "success", "message": "Link saved (local)", "link": link}
+                else:
+                    return JSONResponse(status_code=401, content={"status": "error", "message": "Authentication required"})
+            except Exception as e:
+                print(f"Error saving link to local store: {e}")
+                return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+        users_coll = users_collection()
+
         # Update user document - add link to links array
-        result = users_coll.update_one(
-            {"user_id": auth0_user_id},
+        result = await users_coll.update_one(
+            query_filter,
             {
                 "$push": {"links": link},
                 "$set": {
-                    "user_id": auth0_user_id,
-                    "email": user.get("email"),
                     "updated_at": datetime.utcnow()
                 },
-                "$setOnInsert": {
-                    "created_at": datetime.utcnow()
-                }
+                "$setOnInsert": update_doc_on_insert
             },
             upsert=True
         )
-        
+
         return {
             "status": "success",
             "message": "Link saved successfully",
@@ -1119,39 +1258,55 @@ async def save_user_link(request: Request, user: Optional[dict] = Depends(get_cu
         )
 
 @app.delete("/api/links/{link_id}")
-async def delete_user_link(link_id: str, user: Optional[dict] = Depends(get_current_user)):
-    """Delete a link for current user"""
+async def delete_user_link(link_id: str, user: Optional[dict] = Depends(get_current_user), guestSessionId: str = None):
+    """Delete a link for current user (supports both authenticated and guest users)"""
     try:
-        from backend.db.collections import users_collection
-        
-        # Authentication required
-        if not user:
-            return JSONResponse(
-                status_code=401,
-                content={"status": "error", "message": "Please sign in to delete links"}
-            )
-        
-        auth0_user_id = user.get("sub")
-        if not auth0_user_id:
-            return JSONResponse(
-                status_code=401,
-                content={"status": "error", "message": "Invalid user"}
-            )
-        
+        try:
+            from backend.db.collections import users_collection
+            use_local_store = False
+        except Exception:
+            use_local_store = True
+
+        # Determine which user's link we're deleting
+        query_filter = {}
+
+        if user:
+            # Authenticated user
+            auth0_user_id = user.get("sub")
+            if not auth0_user_id:
+                return JSONResponse(status_code=401, content={"status": "error", "message": "Invalid user"})
+            query_filter = {"auth0UserId": auth0_user_id}
+        elif guestSessionId:
+            # Guest user with session ID
+            query_filter = {"guestSessionId": guestSessionId}
+        else:
+            return JSONResponse(status_code=401, content={"status": "error", "message": "Authentication required"})
+
+        if use_local_store:
+            try:
+                from backend.db.local_store import delete_guest_link
+                ok = delete_guest_link(guestSessionId, int(link_id))
+                if not ok:
+                    return JSONResponse(status_code=404, content={"status": "error", "message": "Link not found"})
+                return {"status": "success", "message": "Link deleted (local)"}
+            except Exception as e:
+                print(f"Error deleting link from local store: {e}")
+                return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
         users_coll = users_collection()
-        
+
         # Remove link from user's links array by link_id
-        result = users_coll.update_one(
-            {"user_id": auth0_user_id},
+        result = await users_coll.update_one(
+            query_filter,
             {"$pull": {"links": {"id": int(link_id)}}}
         )
-        
+
         if result.modified_count == 0:
             return JSONResponse(
                 status_code=404,
                 content={"status": "error", "message": "Link not found"}
             )
-        
+
         return {
             "status": "success",
             "message": "Link deleted successfully"
