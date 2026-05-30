@@ -346,7 +346,13 @@ async function loginWithGoogle() {
 }
 
 async function logout() {
-    if (!authConfig?.enabled) return;
+    const isDemoMode = localStorage.getItem("smartstudyplanner_demo_mode") === "true";
+    if (!authConfig?.enabled || isDemoMode) {
+        clearToken();
+        localStorage.removeItem("smartstudyplanner_demo_mode");
+        window.location.href = "/";
+        return;
+    }
     
     console.log('[Auth] Logging out...');
     clearToken();

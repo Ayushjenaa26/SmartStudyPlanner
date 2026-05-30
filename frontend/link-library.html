@@ -855,6 +855,8 @@
                                 renderLinks();
                                 updateStats();
                                 return;
+                            } else if (result.links && result.links.length === 0) {
+                                console.log('Backend returned no links; will use local cache if available');
                             }
                         } else if (response.status === 401) {
                             console.log('Not authenticated - using local cache only');
@@ -872,13 +874,15 @@
                         const response = await fetch(`/api/links?guestSessionId=${encodeURIComponent(effectiveGuestId)}`, { method: 'GET' });
                         if (response.ok) {
                             const result = await response.json();
-                            if (result.links) {
+                            if (result.links && result.links.length > 0) {
                                 allLinks = result.links;
                                 console.log(`✓ Loaded ${allLinks.length} links from backend (guest: ${effectiveGuestId})`);
                                 saveLinks();
                                 renderLinks();
                                 updateStats();
                                 return;
+                            } else if (result.links && result.links.length === 0) {
+                                console.log('Guest backend returned no links; will use local cache if available');
                             }
                         }
                     } catch (e) {

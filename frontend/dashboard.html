@@ -545,6 +545,29 @@
                     console.warn('[Dashboard] Could not load from DB:', e);
                 }
             }
+
+            // Secondary fallback: if no saved study session is available, try the latest plan document.
+            if (token) {
+                try {
+                    console.log('[Dashboard] Trying latest plan as fallback...');
+                    const response = await authFetch('/api/plans/latest');
+                    if (response && response.ok) {
+                        const latestData = await response.json();
+                        const latestPlan = latestData?.plan?.planJson || latestData?.plan?.studyPlan || latestData?.plan || null;
+                        if (latestPlan && typeof latestPlan === 'object') {
+                            console.log('[Dashboard] ✓ Loaded latest plan fallback');
+                            localStorage.setItem('studyPlan', JSON.stringify(latestPlan));
+                            if (latestData?.plan?.planType) {
+                                localStorage.setItem('planType', latestData.plan.planType);
+                            }
+                            renderDashboard(latestPlan, JSON.parse(localStorage.getItem('taskStatus')) || {}, latestData?.plan?.planType || localStorage.getItem('planType'));
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[Dashboard] Latest plan fallback failed:', e);
+                }
+            }
             
             // Fallback: load from localStorage
             loadDashboardDataFromLocalStorage();
