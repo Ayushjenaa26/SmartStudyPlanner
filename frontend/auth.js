@@ -281,6 +281,8 @@ function clearAppData() {
 }
 
 async function beginLogin(options = {}) {
+    // Ensure server-side auth config is loaded so we use the canonical redirect URI
+    await ensureAuthInitialized();
     if (!authConfig?.enabled) return;
 
     const state = generateNonce();
