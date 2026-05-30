@@ -483,6 +483,7 @@ async function exchangeCodeForTokens(code) {
         body: JSON.stringify({
             code,
             code_verifier: codeVerifier,
+            redirect_uri: getConfiguredRedirectUri(),
         }),
     });
 

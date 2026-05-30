@@ -242,6 +242,7 @@ async def exchange_auth_code(request: Request):
         body = await request.json()
         code = body.get("code")
         code_verifier = body.get("code_verifier")
+        redirect_uri = body.get("redirect_uri")
         
         if not code or not code_verifier:
             return JSONResponse(
@@ -265,7 +266,8 @@ async def exchange_auth_code(request: Request):
         domain = settings["domain"]
         client_id = settings["clientId"]
         client_secret = os.getenv("AUTH0_CLIENT_SECRET", "")
-        redirect_uri = settings["redirectUri"]
+        if not redirect_uri:
+            redirect_uri = settings["redirectUri"]
         
         # Normalize redirect_uri: 127.0.0.1 -> localhost for Auth0 compatibility
         redirect_uri = redirect_uri.replace("127.0.0.1", "localhost")
