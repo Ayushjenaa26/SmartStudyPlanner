@@ -17,5 +17,10 @@ dependencies = [
 	"requests",
 ]
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend*"]
+exclude = ["frontend*"]
+
 [tool.vercel]
 entrypoint = "backend.main:app"
