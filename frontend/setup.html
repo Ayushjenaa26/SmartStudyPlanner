@@ -545,6 +545,7 @@
 
                     const mergedSchedule = mergeSchedules(existingSchedule, cleanedSchedule);
                     localStorage.setItem('studyPlan', JSON.stringify(mergedSchedule));
+                    localStorage.setItem('taskStatus', JSON.stringify({})); // Initialize empty task status for demo mode
                     localStorage.setItem('planType', planType);
                     localStorage.removeItem('loadedPlanId');
                     
