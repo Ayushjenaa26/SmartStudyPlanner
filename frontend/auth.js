@@ -10,6 +10,8 @@ const AUTH0_CLIENT_ID_FALLBACK = "Bd1bhLWKMenqyP3BUAuQtgOjY4gcQUJU";
 // Use PRODUCTION URL only (from server .env AUTH0_REDIRECT_URI)
 const AUTH0_REDIRECT_URI_FALLBACK = "https://smart-study-planner-1dc7.vercel.app/api/auth/callback";
 const KNOWN_STALE_CLIENT_ID = "aRZOJyFKiv1TZyV0ol88oziVDSR1kYsu";
+// Backend API URL - points to separate Vercel backend deployment
+const BACKEND_API_URL = "https://smart-study-planner-two-rho.vercel.app";
 
 function base64UrlDecode(value) {
     const padding = "===".slice((value.length + 3) % 4);
@@ -152,7 +154,7 @@ function setAuthUiState(message, isAuthenticated, user) {
 }
 
 async function loadAuthConfig() {
-    const response = await fetch("/api/auth/config");
+    const response = await fetch(BACKEND_API_URL + "/api/auth/config");
     if (!response.ok) throw new Error(`Unable to load Auth0 settings: ${response.status}`);
 
     const config = await response.json();
@@ -402,6 +404,9 @@ async function authFetch(url, options = {}) {
     // FIX 6: Always attach Bearer token from getAccessToken
     const token = await getAccessToken();
     
+    // Prepend backend URL if URL is relative (doesn't start with http)
+    const fullUrl = url.startsWith('http') ? url : BACKEND_API_URL + url;
+    
     if (!token) {
         console.warn('[authFetch] No token available, using guest mode');
         // Don't redirect - just return null or empty response for guest mode
@@ -415,7 +420,7 @@ async function authFetch(url, options = {}) {
     const headers = new Headers(options.headers || {});
     headers.set("Authorization", `Bearer ${token}`);
     
-    const response = await fetch(url, { ...options, headers });
+    const response = await fetch(fullUrl, { ...options, headers });
     
     // FIX 6: On 401, clear session and redirect to login
     if (response.status === 401) {
@@ -495,7 +500,7 @@ async function exchangeCodeForTokens(code) {
     const codeVerifier = sessionStorage.getItem(AUTH_CODE_VERIFIER_STORAGE_KEY);
     if (!codeVerifier) throw new Error("Missing PKCE code verifier");
 
-    const response = await fetch(`/api/auth/token`, {
+    const response = await fetch(BACKEND_API_URL + `/api/auth/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
