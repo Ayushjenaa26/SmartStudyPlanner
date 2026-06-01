@@ -7,7 +7,8 @@ const AUTH_CALLBACK_PATH = "/api/auth/callback";
 const AUTH_SIGNUP_NAME_STORAGE_KEY = "smartstudyplanner_signup_name";
 const AUTH0_DOMAIN_FALLBACK = "dev-y84psqij4rd2gb3u.us.auth0.com";
 const AUTH0_CLIENT_ID_FALLBACK = "Bd1bhLWKMenqyP3BUAuQtgOjY4gcQUJU";
-const AUTH0_REDIRECT_URI_FALLBACK = window.location.origin + "/api/auth/callback";
+// Use PRODUCTION URL only (from server .env AUTH0_REDIRECT_URI)
+const AUTH0_REDIRECT_URI_FALLBACK = "https://smart-study-planner-1dc7.vercel.app/api/auth/callback";
 const KNOWN_STALE_CLIENT_ID = "aRZOJyFKiv1TZyV0ol88oziVDSR1kYsu";
 
 function base64UrlDecode(value) {
@@ -181,15 +182,13 @@ async function ensureAuthInitialized() {
 }
 
 function getConfiguredRedirectUri() {
-    // Prefer server-provided config if available (ensures frontend and backend use identical redirect URI)
-    try {
-        if (authConfig && authConfig.redirectUri) {
-            return authConfig.redirectUri;
-        }
-    } catch (e) {
-        // ignore and fall back to origin-based value
+    // Use ONLY the server-provided redirect URI to ensure production URLs are used
+    // Never fall back to window.location.origin (prevents localhost fallback)
+    if (authConfig && authConfig.redirectUri) {
+        return authConfig.redirectUri;
     }
-    return `${window.location.origin}${AUTH_CALLBACK_PATH}`;
+    // If authConfig not loaded yet, use the hardcoded fallback from server
+    return AUTH0_REDIRECT_URI_FALLBACK;
 }
 
 async function buildAuthorizeUrl(state, nonce, codeChallenge, options = {}) {
