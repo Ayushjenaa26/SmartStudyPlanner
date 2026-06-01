@@ -190,6 +190,11 @@ function getConfiguredRedirectUri() {
     }
     // If authConfig not loaded yet, use the hardcoded fallback from server
     console.log('[Auth] Using hardcoded fallback redirectUri:', AUTH0_REDIRECT_URI_FALLBACK);
+    // SAFEGUARD: Never allow localhost in production
+    if (AUTH0_REDIRECT_URI_FALLBACK && AUTH0_REDIRECT_URI_FALLBACK.includes('localhost')) {
+        console.error('[Auth] CRITICAL: localhost found in auth URL! Forcing production URL.');
+        return 'https://smart-study-planner-1dc7.vercel.app/api/auth/callback';
+    }
     return AUTH0_REDIRECT_URI_FALLBACK;
 }
 
