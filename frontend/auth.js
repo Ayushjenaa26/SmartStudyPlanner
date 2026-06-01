@@ -185,16 +185,20 @@ function getConfiguredRedirectUri() {
     // Use ONLY the server-provided redirect URI to ensure production URLs are used
     // Never fall back to window.location.origin (prevents localhost fallback)
     if (authConfig && authConfig.redirectUri) {
+        console.log('[Auth] Using server-provided redirectUri:', authConfig.redirectUri);
         return authConfig.redirectUri;
     }
     // If authConfig not loaded yet, use the hardcoded fallback from server
+    console.log('[Auth] Using hardcoded fallback redirectUri:', AUTH0_REDIRECT_URI_FALLBACK);
     return AUTH0_REDIRECT_URI_FALLBACK;
 }
 
 async function buildAuthorizeUrl(state, nonce, codeChallenge, options = {}) {
+    const redirectUri = getConfiguredRedirectUri();
+    console.log('[Auth] Using redirect_uri:', redirectUri);
     const params = new URLSearchParams({
         client_id: authConfig.clientId,
-        redirect_uri: getConfiguredRedirectUri(),
+        redirect_uri: redirectUri,
         response_type: "code",
         response_mode: "query",
         scope: "openid profile email",
