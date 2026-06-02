@@ -188,21 +188,6 @@ async def auth_callback(
                             window.location.href = '/dashboard';
                         }, 500);
                     } else {
-                        // If the state check failed but an id token was stored by the token exchange,
-                        // prefer keeping the user signed in and redirecting to the dashboard instead
-                        // of sending them back to home. This helps when the callback uses a different
-                        // host alias (127.0.0.1 vs localhost) which can break sessionStorage state.
-                        try {
-                            const stored = localStorage.getItem('smartstudyplanner_auth0_id_token');
-                            if (stored) {
-                                document.getElementById('status').textContent = 'Login appears successful (token present). Redirecting to dashboard...';
-                                setTimeout(() => { window.location.href = '/dashboard'; }, 500);
-                                return;
-                            }
-                        } catch (e) {
-                            console.warn('Error checking stored token:', e);
-                        }
-
                         document.getElementById('status').textContent = 'Login failed. Redirecting to home...';
                         setTimeout(() => {
                             window.location.href = '/';
@@ -242,7 +227,6 @@ async def exchange_auth_code(request: Request):
         body = await request.json()
         code = body.get("code")
         code_verifier = body.get("code_verifier")
-        redirect_uri = body.get("redirect_uri")
         
         if not code or not code_verifier:
             return JSONResponse(
@@ -266,8 +250,7 @@ async def exchange_auth_code(request: Request):
         domain = settings["domain"]
         client_id = settings["clientId"]
         client_secret = os.getenv("AUTH0_CLIENT_SECRET", "")
-        if not redirect_uri:
-            redirect_uri = settings["redirectUri"]
+        redirect_uri = settings["redirectUri"]
         
         # Normalize redirect_uri: 127.0.0.1 -> localhost for Auth0 compatibility
         redirect_uri = redirect_uri.replace("127.0.0.1", "localhost")
@@ -573,9 +556,6 @@ async def get_latest_plan(current_user: dict = Depends(get_current_user)):
     try:
         from backend.db.collections import study_plans_collection
         
-        if not current_user:
-            return {"status": "error", "message": "Not authenticated", "plan": None}
-
         # FIX 2: Null-guard for auth0_user_id
         auth0_user_id = current_user.get("sub")
         if not auth0_user_id:
@@ -584,7 +564,7 @@ async def get_latest_plan(current_user: dict = Depends(get_current_user)):
         plans_coll = study_plans_collection()
         
         # Find the latest plan for this user, sorted by created_at descending
-        plan = await plans_coll.find_one(
+        plan = plans_coll.find_one(
             {"auth0UserId": auth0_user_id},
             sort=[("created_at", -1)]
         )
@@ -621,7 +601,7 @@ async def get_plans(user: Optional[dict] = Depends(get_current_user)):
             return {"status": "error", "message": "Not authenticated", "plans": []}
         
         plans_coll = study_plans_collection()
-        plans = await plans_coll.find({"auth0UserId": auth0_user_id}).to_list(length=None)
+        plans = list(plans_coll.find({"auth0UserId": auth0_user_id}))
         
         # Convert ObjectId to string for JSON serialization
         for plan in plans:
@@ -651,7 +631,7 @@ async def create_plan(request: Request, user: Optional[dict] = Depends(get_curre
         plan_data["auth0UserId"] = user_id
         
         plans_coll = study_plans_collection()
-        result = await plans_coll.insert_one(plan_data)
+        result = plans_coll.insert_one(plan_data)
         
         return {"status": "success", "plan_id": str(result.inserted_id)}
     except Exception as e:
@@ -673,7 +653,7 @@ async def get_plan(plan_id: str, user: Optional[dict] = Depends(get_current_user
         from bson import ObjectId
         
         plans_coll = study_plans_collection()
-        plan = await plans_coll.find_one({"_id": ObjectId(plan_id)})
+        plan = plans_coll.find_one({"_id": ObjectId(plan_id)})
         
         if not plan:
             return JSONResponse(
@@ -706,7 +686,7 @@ async def delete_plan(plan_id: str, user: Optional[dict] = Depends(get_current_u
         from bson import ObjectId
         
         plans_coll = study_plans_collection()
-        plan = await plans_coll.find_one({"_id": ObjectId(plan_id)})
+        plan = plans_coll.find_one({"_id": ObjectId(plan_id)})
         
         if not plan:
             return JSONResponse(
@@ -789,7 +769,7 @@ async def handle_generate_plan(request: Request, user: dict = Depends(get_curren
         
         try:
             plans_coll = study_plans_collection()
-            result = await plans_coll.insert_one(plan_document)
+            result = plans_coll.insert_one(plan_document)
             plan_data["plan_id"] = str(result.inserted_id)
         except Exception as db_error:
             # If database fails, still return the plan but without ID
@@ -881,7 +861,7 @@ async def save_study_session(request: Request, user: Optional[dict] = Depends(ge
         sessions_coll = study_sessions_collection()
         
         # Upsert - find latest session for this user and update it
-        result = await sessions_coll.update_one(
+        result = sessions_coll.update_one(
             {"auth0UserId": user_id},
             {"$set": session_data},
             upsert=True
@@ -910,7 +890,7 @@ async def load_study_session(user: Optional[dict] = Depends(get_current_user)):
         user_id = user.get("sub") or user.get("user_id")
         sessions_coll = study_sessions_collection()
         
-        session = await sessions_coll.find_one({"auth0UserId": user_id})
+        session = sessions_coll.find_one({"auth0UserId": user_id})
         
         if not session:
             return {
